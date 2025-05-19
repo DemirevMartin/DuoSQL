@@ -1,0 +1,20 @@
+CREATE TABLE _dict (
+    name character varying(20),
+    dict dictionary
+);
+
+CREATE TABLE drives (
+    id integer,
+    person text,
+    color text,
+    car text,
+    _sentence bdd
+);
+
+CREATE TABLE saw (
+    id integer,
+    witness text,
+    color text,
+    car text,
+    _sentence bdd
+);
