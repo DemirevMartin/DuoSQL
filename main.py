@@ -11,6 +11,9 @@
 2. Handle certainty - when data is certain in a given table and there are no sentences ✅
 
 3. Postgres Tests
+    - Table creation and population
+    - Records creation and population
+    - Probabilistic handling
 
 4. Extend the code with more complex DuBio features, such as:
     - Adding the | & operator for probabilistic joins
@@ -59,7 +62,6 @@ REGEX_CLAUSE_STRUCTURES: dict[str, str] = {
 
 REGEX_JOIN_CLAUSE_START: str = r"\b(?:(?:(?:LEFT|RIGHT|FULL)(?:\s+OUTER)?|INNER|CROSS)?\s*JOIN)\b"
 REGEX_JOIN_CLAUSE: str = rf"{REGEX_JOIN_CLAUSE_START}\s+(\w+)(?:\s+(\w+))?"
-REGEX_JOIN_KEYWORD_SEARCH: str = rf"(?<!\n)(?<!\n\s*){REGEX_JOIN_CLAUSE_START}"
 
 
 ########### SQL CLAUSE EXTRACTION ##########
@@ -210,9 +212,10 @@ def generate_join_view(select_clause: str, from_clause: str, sentence_expr: str,
     if with_sentence or needs_prob:
         join_fields += f", {sentence_expr} AS _sentence"
 
-    # Insert newline before JOIN and uppercase it
+    from_clause = re.sub(r"[\s\t]+", " ", from_clause.strip())
+
     formatted_from = re.sub(
-        REGEX_JOIN_KEYWORD_SEARCH,
+        REGEX_JOIN_CLAUSE_START,
         lambda m: f"\n{m.group(0).upper().strip()}",
         from_clause,
         flags=re.IGNORECASE
