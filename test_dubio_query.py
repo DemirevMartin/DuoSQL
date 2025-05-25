@@ -12,28 +12,31 @@ database = os.getenv("DATABASE")
 
 engine = create_engine(f"postgresql+psycopg2://{user}:{password}@{host}/{database}")
 
-query_where = f"""
-    SELECT d.person AS suspect, s.witness,
-        s._sentence & d._sentence AS _sentence
-    FROM saw s, drives d
-    WHERE s.color = d.color AND s.car = d.car
-"""
 
-query_print_dict = f"""
-    SELECT print(dict) FROM _dict WHERE name = 'mydict'
-"""
+if __name__ == "__main__":
+    query_where = f"""
+        SELECT d.person AS suspect, s.witness,
+            s._sentence & d._sentence AS _sentence
+        FROM saw s, drives d
+        WHERE s.color = d.color AND s.car = d.car
+    """
 
-print('\n ---- QUERY 1 ----\n')
-df = pd.read_sql_query(query_where, engine)
-print(df)
+    query_print_dict = f"""
+        SELECT print(dict) FROM _dict WHERE name = 'mydict'
+    """
 
-print('\n ---- QUERY 2 ----\n')
-df = pd.read_sql_query(query_print_dict, engine)
+    print('\n ---- QUERY 1 ----\n')
+    df = pd.read_sql_query(query_where, engine)
+    print(df)
 
-for index, row in df.iterrows():
-    print(f"Row {index}:")
-    for column in df.columns:
-        print(f"  {column}: {row[column]}")
-    print()
+    print('\n ---- QUERY 2 ----\n')
+    df = pd.read_sql_query(query_print_dict, engine)
+
+    for index, row in df.iterrows():
+        print(f"Row {index}:")
+        for column in df.columns:
+            print(f"  {column}: {row[column]}")
+        print()
+        
+    engine.dispose()
     
-engine.dispose()
