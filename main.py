@@ -1,23 +1,11 @@
-""" TODO List (PostgreSQL + DuBio):
-1. Support more complex queries:
-    - Support for JOINs ✅
-    - Support for user VIEWs
-    - Support for subqueries 
-    - Support for ORDER BY and LIMIT clauses ✅
-    - Support for GROUP BY and HAVING clauses
-    - DISTINCT
-    - conditioning
-
-2. Handle certainty - when data is certain in a given table and there are no sentences ✅
-
-3. Postgres Tests
-    - Table creation and population
-    - Records creation and population
-    - Probabilistic handling
-
-4. Extend the code with more complex DuBio features, such as:
-    - Adding the | & operator for probabilistic joins
-    - Adding other DuBio-specific functions like agg_or(), agg_and(), etc.
+""" TODO
+    - Support for JOINs
+    - Support for ORDER BY and LIMIT clauses
+    - Support for GROUP BY and HAVING clauses (HIGH PRIORITY)
+    - DISTINCT (HIGH PRIORITY)
+    - Support for user VIEWs (MEDIUM PRIORITY)
+    - Support for subqueries (LOW PRIORITY)
+    - conditioning ?
 """
 import re, os
 from typing import List, Tuple, Optional, Dict
@@ -36,15 +24,14 @@ engine = create_engine(f"postgresql+psycopg2://{user}:{password}@{host}/{databas
 
 ############ CONSTANTS ############
 REGEX_BOUNDING_CLAUSES: dict[str, str] = {
-    "SELECT": r"\bFROM",
-    "FROM_JOIN": r"\b(?:WHERE|GROUP|HAVING|ORDER|LIMIT|SHOW|;|$)", # NOTE: JOIN is not included here, as it is handled together with FROM
-    "FROM_NO_JOIN": r"\b(?:JOIN|WHERE|GROUP|HAVING|ORDER|LIMIT|SHOW|;|$)", 
-    "WHERE": r"\b(?:GROUP|HAVING|ORDER|LIMIT|SHOW|;|$)",
-    "GROUP": r"\b(?:HAVING|ORDER|LIMIT|SHOW|;|$)",
-    "HAVING": r"\b(?:ORDER|LIMIT|SHOW|;|$)",
-    "ORDER": r"\b(?:LIMIT|SHOW|;|$)",
-    "LIMIT": r"\b(?:SHOW|;|$)",
-    "SHOW": r";|$"
+    "SELECT": r"\b(?=FROM|;|$)\b",
+    "FROM_JOIN": r"\b(?=SHOW|GROUP|HAVING|ORDER|LIMIT|WHERE|;|$)\b",  # JOIN handled inside FROM
+    "FROM_NO_JOIN": r"\b(?=JOIN|WHERE|GROUP|HAVING|ORDER|LIMIT|SHOW|;|$)\b",
+    "WHERE": r"\b(?=GROUP|HAVING|ORDER|LIMIT|SHOW|;|$)\b",
+    "GROUP": r"\b(?=HAVING|ORDER|LIMIT|SHOW|;|$)\b",
+    "HAVING": r"\b(?=ORDER|LIMIT|SHOW|;|$)\b",
+    "ORDER": r"\b(?=LIMIT|SHOW|;|$)\b",
+    "LIMIT": r"\b(?=SHOW|;|$)\b",
 }
 
 REGEX_CLAUSE_STRUCTURES: dict[str, str] = {
@@ -57,7 +44,7 @@ REGEX_CLAUSE_STRUCTURES: dict[str, str] = {
     "HAVING": rf"\bHAVING\s+(.+?){REGEX_BOUNDING_CLAUSES['HAVING']}",
     "ORDER": rf"\bORDER\s+BY\s+(.+?){REGEX_BOUNDING_CLAUSES['ORDER']}",
     "LIMIT": rf"\bLIMIT\s+(.+?){REGEX_BOUNDING_CLAUSES['LIMIT']}",
-    "SHOW": rf"\bSHOW\s+(.+?){REGEX_BOUNDING_CLAUSES['SHOW']}"
+    "SHOW": rf"\bSHOW\s+(.+?)"
 }
 
 REGEX_JOIN_CLAUSE_START: str = r"\b(?:(?:(?:LEFT|RIGHT|FULL)(?:\s+OUTER)?|INNER|CROSS)?\s*JOIN)\b"
@@ -65,7 +52,6 @@ REGEX_JOIN_CLAUSE: str = rf"{REGEX_JOIN_CLAUSE_START}\s+(\w+)(?:\s+(\w+))?"
 
 
 ########### SQL CLAUSE EXTRACTION ##########
-
 # Checks SQL query correctness
 def extract_select_from_clauses(sql: str) -> Tuple[Optional[str], Optional[str]]:
     select_match = re.search(REGEX_CLAUSE_STRUCTURES['SELECT'], sql, re.IGNORECASE | re.DOTALL)
@@ -149,7 +135,7 @@ def get_tables_with_sentence_column(tables: List[str]) -> Dict[str, bool]:
     Checks if each table in the list has a `_sentence` column.
     Returns a dictionary: {table_name: True/False}
     """
-    result = {}
+    tables_with_sentence_column = []
     with engine.connect() as conn:
         for table in set(tables):
             query = text("""
@@ -160,22 +146,24 @@ def get_tables_with_sentence_column(tables: List[str]) -> Dict[str, bool]:
                 LIMIT 1
             """)
             has_sentence = conn.execute(query, {"table": table}).scalar() is not None
-            result[table] = has_sentence
-    return result
+            if has_sentence:
+                tables_with_sentence_column.append(table)
+    return tables_with_sentence_column
 
 
-# NOTE: As handled in the extract_all_tables, all tables have an alias 
-# - whether they are specified in the SQL query or not.
-def generate_sentence_expression_conditional(tables: List[Tuple[str, str]]) -> str:
-    """
-    Only includes aliases for tables that have a `_sentence` column.
-    """
+
+def generate_sentence_expression(tables: List[Tuple[str, str]], ) -> str:
     table_names = [tbl for tbl, _ in tables]
-    sentence_map = get_tables_with_sentence_column(table_names)
+    tables_with_sentence_column = get_tables_with_sentence_column(table_names)
     
+    if not tables_with_sentence_column:
+        return None
+    
+    # NOTE: As handled in the extract_all_tables, all tables have an alias 
+    # - whether they are specified in the SQL query or not.
     included_aliases = [
         alias for table, alias in tables
-        if sentence_map.get(table, False)
+        if table in tables_with_sentence_column
     ]
     
     return ' & '.join([f"{alias}._sentence" for alias in included_aliases])
@@ -190,7 +178,7 @@ def parse_probability_filter(sql: str) -> Optional[str]:
     if not match:
         return None
     where_clause = match.group(1)
-    prob_filter_match = re.search(r"\b(probability\s*[<>!=]+\s*(?:\d+\.\d+|\d+))", where_clause, re.IGNORECASE)
+    prob_filter_match = re.search(r"\bWHERE\s+(.+)?\b(probability\s*[<>!=]{1,2}\s*(?:1\.00|0\.\d{1,2}))", where_clause, re.IGNORECASE)
     return prob_filter_match.group(1) if prob_filter_match else None
 
 
@@ -203,14 +191,10 @@ def generate_drop_views() -> str:
     )
 
 
-# join_regex_keyword = r"\b(((LEFT|RIGHT|FULL)(\s+OUTER)?|INNER|CROSS)?\s*JOIN)\b"
-import re
-
-def generate_join_view(select_clause: str, from_clause: str, sentence_expr: str,
-                       with_sentence: bool, needs_prob: bool) -> str:
+def generate_join_view(select_clause: str, from_clause: str, sentence_expression: str, needs_sentence: bool) -> str:
     join_fields = select_clause
-    if with_sentence or needs_prob:
-        join_fields += f", {sentence_expr} AS _sentence"
+    if sentence_expression and needs_sentence:
+        join_fields += f", {sentence_expression} AS _sentence"
 
     from_clause = re.sub(r"[\s\t]+", " ", from_clause.strip())
 
@@ -243,7 +227,7 @@ def generate_final_query(select_clause: str, with_prob: bool, with_sentence: boo
                          prob_condition: Optional[str], needs_prob: bool,
                          order_by: Optional[str], limit: Optional[str]) -> str:
     output_from = "prob_view" if needs_prob else "join_view"
-    show_prob = "probability" if with_prob else ""
+    show_probability = "probability" if with_prob else ""
     show_sentence = "_sentence" if with_sentence else ""
 
     user_fields = [f.strip() for f in select_clause.split(",")]
@@ -258,12 +242,13 @@ def generate_final_query(select_clause: str, with_prob: bool, with_sentence: boo
     ]
 
     final_fields = fields_without_table_alias
-    if show_prob:
-        final_fields.append(show_prob)
+    if show_probability:
+        final_fields.append(show_probability)
     if show_sentence:
         final_fields.append(show_sentence)
 
     query = f"SELECT {', '.join(final_fields)}\nFROM {output_from}"
+
     if prob_condition:
         query += f"\nWHERE {prob_condition}"
     if order_by:
@@ -275,31 +260,33 @@ def generate_final_query(select_clause: str, with_prob: bool, with_sentence: boo
 
 
 def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
-    # User query input
+    # User sql query input
     sql = sql.strip()
-    with_prob = re.search(r"\bSHOW\s+(.+)?PROBABILITY", sql.upper())
-    with_sentence = re.search(r"\bSHOW\s+(.+)?SENTENCE", sql.upper())
-    sql = re.sub(r"SHOW\s+(.+)?", "", sql, flags=re.IGNORECASE)
-
-    # Check if probability is requested
-    prob_condition = parse_probability_filter(sql)
-    needs_prob = with_prob or prob_condition is not None
 
     # Extract SELECT and FROM clauses
     select_clause, from_clause = extract_select_from_clauses(sql)
     if not select_clause or not from_clause: # If the SQL query is not valid, return an error message
         return ["ERROR: Invalid SQL query format."]
     
+    with_prob = re.search(r"\bSHOW\s+(.+)?\bPROBABILITY", sql.upper())
+    with_sentence = re.search(r"\bSHOW\s+(.+)?\bSENTENCE", sql.upper())
+
+    # Check if there is a probability condition
+    # NOTE: If SHOW PROBABILITY is not requested, we do not show the probability
+    prob_condition = parse_probability_filter(sql)
+    needs_prob = with_prob or prob_condition is not None
+    needs_sentence = with_sentence is not None or needs_prob
+
     # Extract ORDER BY and LIMIT clauses
     order_by, limit = extract_order_by_and_limit(sql)
 
     # Extract all tables and their aliases
     tables = extract_all_tables(sql)
-    sentence_expr = generate_sentence_expression_conditional(tables)
+    sentence_expression = generate_sentence_expression(tables)
 
     view_queries = []
     view_queries.append(generate_drop_views())
-    view_queries.append(generate_join_view(select_clause, from_clause, sentence_expr, with_sentence, needs_prob))
+    view_queries.append(generate_join_view(select_clause, from_clause, sentence_expression, needs_sentence))
 
     if needs_prob:
         view_queries.append(generate_prob_view(dict_name))
