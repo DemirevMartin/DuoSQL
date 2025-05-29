@@ -71,6 +71,9 @@ def extract_order_by_and_limit(sql: str) -> Tuple[Optional[str], Optional[str]]:
     order_by_match = re.search(REGEX_CLAUSE_STRUCTURES['ORDER'], sql, re.IGNORECASE | re.DOTALL)
     if order_by_match:
         order_by = order_by_match.group(1).strip()
+        # NOTE: Remove table aliases (if any!) - everything belongs to the view and has no alias anymore
+        order_by = [re.sub(r"^\w+\.", "", part.strip()) for part in order_by.split(',')]
+        order_by = ', '.join(order_by)
 
     # LIMIT
     limit_match = re.search(REGEX_CLAUSE_STRUCTURES['LIMIT'], sql, re.IGNORECASE | re.DOTALL)
@@ -167,6 +170,10 @@ def generate_sentence_expression(tables: List[Tuple[str, str]], ) -> str:
     ]
     
     return ' & '.join([f"{alias}._sentence" for alias in included_aliases])
+
+
+def requests_probability(sql: str) -> bool:
+    return bool(re.search(r"\bprobability\b", sql, re.IGNORECASE))
 
 
 # This function parses the SQL query to find the probability filter
@@ -268,13 +275,14 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
     if not select_clause or not from_clause: # If the SQL query is not valid, return an error message
         return ["ERROR: Invalid SQL query format."]
     
+    # NOTE: This is to solely SHOW the probability <=> different than 'needs_prob'!
     with_prob = re.search(r"\bSHOW\s+(.+)?\bPROBABILITY", sql.upper())
     with_sentence = re.search(r"\bSHOW\s+(.+)?\bSENTENCE", sql.upper())
 
     # Check if there is a probability condition
     # NOTE: If SHOW PROBABILITY is not requested, we do not show the probability
+    needs_prob = requests_probability(sql)
     prob_condition = parse_probability_filter(sql)
-    needs_prob = with_prob or prob_condition is not None
     needs_sentence = with_sentence is not None or needs_prob
 
     # Extract ORDER BY and LIMIT clauses

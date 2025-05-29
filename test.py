@@ -73,19 +73,79 @@ test_9 = """
     SHOW PROBABILITY
 """
 
+# -- INNER JOIN with SHOW SENTENCE (people who cared for cats that were also witnessed)
+test_10 = """
+    SELECT w.witness, c.caretaker AS person, w.cat_name, w.color
+    FROM witnessed w INNER JOIN cares c
+    ON w.cat_name = c.cat_name AND w.breed = c.breed
+    SHOW SENTENCE
+"""
+
+# -- Complex joins with SHOW SENTENCE (cats that were witnessed, played with, and cared for)
+test_11 = """
+    SELECT w.witness, p.companion, c.caretaker, w.cat_name
+    FROM witnessed w
+    INNER JOIN plays p ON w.cat_name = p.cat_name
+    FULL OUTER JOIN cares c ON w.cat_name = c.cat_name
+    SHOW SENTENCE
+"""
+
+############## ORDER BY and LIMIT ##############
+test_12 = """
+    SELECT p.companion AS person, w.witness, w.cat_name, w.color
+    FROM witnessed w
+    INNER JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color
+    WHERE probability > 0.7
+    ORDER BY w.witness DESC, probability ASC
+    LIMIT 10
+    SHOW SENTENCE
+"""
+
+test_13 = """
+    SELECT w.witness, p.companion AS person, w.cat_name, w.color
+    FROM witnessed w
+    LEFT OUTER JOIN plays p ON w.cat_name = p.cat_name AND w.breed = p.breed
+    WHERE probability > 0.7
+    ORDER BY probability DESC, w.witness ASC
+    LIMIT 5
+    SHOW PROBABILITY
+"""
+
+############### UN/CERTAIN Data ##############
+test_14 = """
+    SELECT w.witness, pc.cat_id, w.cat_name, w.color, w.breed
+    FROM witnessed w
+    JOIN profile_certain pc ON w.cat_name = pc.cat_name
+    WHERE probability > 0.5
+    ORDER BY pc.cat_id;
+"""
+
+test_15 = """
+    SELECT p.companion, pc.cat_id, p.cat_name, p.color
+    FROM plays p
+    JOIN profile_certain pc ON p.cat_name = pc.cat_name
+    SHOW PROBABILITY
+    LIMIT 10;
+"""
+
+test_16 = """
+    SELECT c.caretaker, pc.cat_id, c.cat_name, c.breed, c.age
+    FROM cares c
+    JOIN profile_certain pc ON c.cat_name = pc.cat_name
+    SHOW SENTENCE;
+"""
+
 
 ########################################
 ############### RUN TESTS ##############
 simple_tests = [test_1, test_2, test_3, test_4]
-# join_tests = [test_5, test_6, test_7, test_8, test_9, test_10, test_11]
-# order_limit_tests = [test_12, test_13]
-# view_tests = [test_14]
-
-# certain_data_tests = [test_15, test_16, test_17]
+join_tests = [test_5, test_6, test_7, test_8, test_9, test_10, test_11]
+order_limit_tests = [test_12, test_13]
+certain_data_tests = [test_14, test_15, test_16]
 
 selected_tests = [test_6, test_7, test_8]
 
-tests = selected_tests
+tests = certain_data_tests
 
 def run_tests():
     for i, test in enumerate(tests):
@@ -96,5 +156,3 @@ def run_tests():
 
 if __name__ == "__main__":
     run_tests()
-    # Uncomment the line below to test with a custom SQL query
-    # print(generate_full_translation("SELECT * FROM table1 t1, table2 t2 WHERE t1.id = t2.id"))
