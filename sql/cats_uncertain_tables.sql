@@ -14,7 +14,7 @@ CREATE TABLE witnessed (
     cat_name text,
     breed text,
     color text,
-    age text,
+    age integer,
     _sentence Bdd
 );
 
@@ -24,7 +24,7 @@ CREATE TABLE plays (
     cat_name text,
     breed text,
     color text,
-    age text,
+    age integer,
     _sentence Bdd
 );
 
@@ -34,7 +34,7 @@ CREATE TABLE cares (
     cat_name text,
     breed text,
     color text,
-    age text,
+    age integer,
     _sentence Bdd
 );
 
@@ -44,6 +44,6 @@ CREATE TABLE owns (
     cat_name text,
     breed text,
     color text,
-    age text,
+    age integer,
     _sentence Bdd
 );

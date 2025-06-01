@@ -1,10 +1,13 @@
-""" TODO
-    - Support for JOINs
-    - Support for ORDER BY and LIMIT clauses
-    - Support for GROUP BY and HAVING clauses (HIGH PRIORITY)
-    - DISTINCT (HIGH PRIORITY)
-    - Support for user VIEWs (MEDIUM PRIORITY)
-    - Support for subqueries (LOW PRIORITY)
+"""TODO
+    - Extract WHERE statement
+    - Implement DISTINCT
+    - Counting rows (e.g., COUNT(*)) and similar to the last function in aggregates.sql?
+    - Include JOINs in the aggregate query
+    - Multiple aggregations in one query?
+"""
+""" Questions
+    - When joining sentences, do we always use '&'? Is '|' applicable (user input/logic)?
+    - agg_or() is used for DISTINCT, is agg_and() applicable in any way?
     - conditioning ?
 """
 import re, os
@@ -12,6 +15,7 @@ from typing import List, Tuple, Optional, Dict
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 
+############ CONSTANTS ############
 # Load environment variables from .env file
 load_dotenv(".env")
 
@@ -22,7 +26,6 @@ database = os.getenv("DATABASE")
 
 engine = create_engine(f"postgresql+psycopg2://{user}:{password}@{host}/{database}")
 
-############ CONSTANTS ############
 REGEX_BOUNDING_CLAUSES: dict[str, str] = {
     "SELECT": r"\b(?=FROM|;|$)\b",
     "FROM_JOIN": r"\b(?=SHOW|GROUP|HAVING|ORDER|LIMIT|WHERE|;|$)\b",  # JOIN handled inside FROM
@@ -31,7 +34,7 @@ REGEX_BOUNDING_CLAUSES: dict[str, str] = {
     "GROUP": r"\b(?=HAVING|ORDER|LIMIT|SHOW|;|$)\b",
     "HAVING": r"\b(?=ORDER|LIMIT|SHOW|;|$)\b",
     "ORDER": r"\b(?=LIMIT|SHOW|;|$)\b",
-    "LIMIT": r"\b(?=SHOW|;|$)\b",
+    "LIMIT": r"\b(?=SHOW|;|$)\b"
 }
 
 REGEX_CLAUSE_STRUCTURES: dict[str, str] = {
@@ -131,6 +134,24 @@ def extract_all_tables(sql: str) -> List[Tuple[str, str]]:
     return all_tables
 
 
+########## AGGREGATION ##########
+def is_aggregate_query(sql: str) -> bool:
+    return bool(re.search(r"\b(count|sum|avg|min|max)\s*\(", sql, re.IGNORECASE))
+
+
+def extract_aggregate_query_parts(sql: str) -> Dict[str, Optional[str]]:
+    sql = sql.strip().rstrip(';') + ';'  # normalize
+    parts = {}
+
+    for clause, pattern in REGEX_CLAUSE_STRUCTURES.items():
+        match = re.search(pattern, sql, re.IGNORECASE | re.DOTALL)
+        if match:
+            parts[clause.lower()] = match.group(1).strip()
+        else:
+            parts[clause.lower()] = None
+
+    return parts
+
 ######### PROBABILISTIC HANDLING ##########
 
 def get_tables_with_sentence_column(tables: List[str]) -> Dict[str, bool]:
@@ -152,7 +173,6 @@ def get_tables_with_sentence_column(tables: List[str]) -> Dict[str, bool]:
             if has_sentence:
                 tables_with_sentence_column.append(table)
     return tables_with_sentence_column
-
 
 
 def generate_sentence_expression(tables: List[Tuple[str, str]], ) -> str:
@@ -219,17 +239,52 @@ def generate_join_view(select_clause: str, from_clause: str, sentence_expression
     )
 
 
-def generate_prob_view(dict_name: str) -> str:
+def generate_prob_view(view: str, dict_name: str) -> str:
     return (
         "CREATE OR REPLACE VIEW prob_view AS\n"
-        "SELECT j.*, round(prob(d.dict, j._sentence)::numeric, 4) AS probability\n"
-        "FROM join_view j, _dict d\n"
+        "SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability\n"
+        f"FROM {view} v, _dict d\n"
         f"WHERE d.name = '{dict_name}';"
     )
 
 
-########## FINAL QUERY CREATION ##########
+def build_aggregate_view(table: str, group_cols: list[str], agg_func: str, agg_field: str, alias: str = "agg_view") -> str:
+    """
+    Build an SQL view to compute probabilistic aggregates.
+    :param table: The table name (e.g., 'witnessed')
+    :param group_cols: List of columns to group by (e.g., ['cat_name'])
+    :param agg_func: Aggregate function: 'count', 'sum', 'avg', 'min', 'max'
+    :param agg_field: Field to aggregate (e.g., 'age')
+    :param alias: Name for the final view
+    """
+    agg_func = agg_func.lower()
+    bdd_func = f"prob_Bdd_{agg_func}"
+    group_by = ", ".join(group_cols)
+    arr = f"array_agg({agg_field})"
+    arr_sentence = "array_agg(_sentence)"
+    mask_gen = "generate_series(0,(pow(2,array_length(arr_sentence,1))-1)::int)::bit(32)"
 
+    return f"""CREATE OR REPLACE VIEW {alias} AS
+SELECT {group_by}, {agg_func}, agg_or(_sentence) AS _sentence
+FROM (
+    SELECT {group_by}, {bdd_func}(arr,mask) AS {agg_func}, prob_Bdd(arr_sentence,mask) AS _sentence, arr, arr_sentence, mask
+    FROM (
+        SELECT {group_by}, arr, arr_sentence, {mask_gen} AS mask
+        FROM (
+            SELECT {group_by}, {arr} arr, {arr_sentence} arr_sentence
+            FROM (
+                SELECT {group_by}, {agg_field}, agg_or(_sentence) AS _sentence
+                FROM {table}
+                GROUP BY {group_by}, {agg_field}
+            ) AS first
+            GROUP BY {group_by}
+        ) AS second
+    ) AS third
+) AS forth
+GROUP BY {group_by}, {agg_func};"""
+
+
+########## FINAL QUERY CREATION ##########
 def generate_final_query(select_clause: str, with_prob: bool, with_sentence: bool,
                          prob_condition: Optional[str], needs_prob: bool,
                          order_by: Optional[str], limit: Optional[str]) -> str:
@@ -266,6 +321,56 @@ def generate_final_query(select_clause: str, with_prob: bool, with_sentence: boo
     return query + ";"
 
 
+def generate_aggregate_query(sql, select_clause: str,
+                            with_prob: bool = False, with_sentence: bool = False,
+                            needs_prob: bool = False, order_by: Optional[str] = None,
+                            limit: Optional[str] = None, dict_name: str = "mydict") -> List[str]:
+    
+    parts = extract_aggregate_query_parts(sql)
+    group_by = parts.get("group")
+    having = parts.get("having")
+    table = extract_all_tables(sql)[0][0]  # assume one table for now
+
+    # Parse aggregation function and target from SELECT
+    match = re.search(r"\b(count|sum|avg|min|max)\s*\(\s*(\*|\w+)\s*\)(?:\s+AS\s+(\w+)\b)?", select_clause, re.IGNORECASE)
+    if not match:
+        return ["ERROR: Unsupported or malformed aggregation."]
+    agg_func, agg_target, alias = match.groups()
+    agg_target = "1" if agg_target == "*" else agg_target
+    
+    # Handle alias presence
+    original_agg_field = f"{agg_func}({agg_target}) AS {alias}" if alias else f"{agg_func}({agg_target})"
+    final_agg_field = f"{agg_func} AS {alias}" if alias else f"{agg_func}"
+    having = having.replace(original_agg_field, final_agg_field) if having else None
+
+    # Build the aggregate view
+    view_queries = []
+    view_queries.append("DROP VIEW IF EXISTS agg_view CASCADE;")
+    view_queries.append(build_aggregate_view(table, [group_by], agg_func, agg_target, alias="agg_view"))
+
+    if needs_prob:
+        view_queries.append(generate_prob_view("agg_view", dict_name))
+
+    final_output_table = "prob_view" if needs_prob else "agg_view"
+    final_fields = [group_by, final_agg_field]
+    if with_prob:
+        final_fields.append("probability")
+    if with_sentence:
+        final_fields.append("_sentence")
+
+    query = f"SELECT {', '.join(final_fields)}\nFROM {final_output_table}"
+
+    if having:
+        query += f"\nWHERE {having}"
+    if order_by:
+        query += f"\nORDER BY {order_by}"
+    if limit:
+        query += f"\nLIMIT {limit}"
+
+    view_queries.append(query + ";")
+    return view_queries
+
+
 def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
     # User sql query input
     sql = sql.strip()
@@ -292,12 +397,24 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
     tables = extract_all_tables(sql)
     sentence_expression = generate_sentence_expression(tables)
 
+    # Check for aggregate query
+    if is_aggregate_query(sql):
+        return generate_aggregate_query(
+            sql, select_clause,
+            with_prob=with_prob is not None,
+            with_sentence=needs_sentence,
+            needs_prob=needs_prob,
+            order_by=order_by,
+            limit=limit,
+            dict_name=dict_name
+        )
+
     view_queries = []
     view_queries.append(generate_drop_views())
     view_queries.append(generate_join_view(select_clause, from_clause, sentence_expression, needs_sentence))
 
     if needs_prob:
-        view_queries.append(generate_prob_view(dict_name))
+        view_queries.append(generate_prob_view("join_view", dict_name))
 
     view_queries.append(generate_final_query(
         select_clause,
