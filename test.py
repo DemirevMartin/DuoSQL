@@ -158,6 +158,48 @@ test_distinct_2 = """
     ORDER BY color;
 """
 
+############### WHERE (and HAVING) ##############
+test_where_1 = """
+    SELECT w.witness, p.companion AS person, w.cat_name, w.color
+    FROM witnessed w
+    INNER JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color
+    WHERE probability >= 0.25 AND w.cat_name = 'max' AND w.color = 'gray'
+    ORDER BY w.witness DESC, probability ASC
+    LIMIT 10
+    SHOW SENTENCE, PROBABILITY
+"""
+
+test_where_2 = """
+    SELECT w.witness, p.companion AS person, w.cat_name, w.color
+    FROM witnessed w
+    LEFT OUTER JOIN plays p ON w.cat_name = p.cat_name AND w.breed = p.breed
+    WHERE probability > 0.3 AND w.cat_name = 'max' AND (w.color = 'gray' OR w.color = 'black')
+    ORDER BY probability DESC, w.witness ASC
+    LIMIT 5
+    SHOW PROBABILITY
+"""
+
+test_where_having_1 = """
+    SELECT cat_name, COUNT(color)
+    FROM witnessed
+    WHERE probability > 0
+    GROUP BY cat_name
+    HAVING COUNT(color) > 1
+    ORDER BY probability ASC
+    LIMIT 10
+    SHOW SENTENCE, PROBABILITY
+"""
+
+test_where_having_2 = """
+    SELECT cat_name, avg(age)
+    FROM witnessed
+    WHERE probability > 0
+    GROUP BY cat_name
+    HAVING avg(age) > 2
+    ORDER BY cat_name
+    SHOW PROBABILITY
+"""
+
 
 ########################################
 ############### RUN TESTS ##############
@@ -167,10 +209,12 @@ order_limit_tests = [test_order_limit_1, test_order_limit_2]
 certain_data_tests = [test_certain_data_1, test_certain_data_2, test_certain_data_3]
 aggregation_tests = [test_agg_1]
 distinct_tests = [test_distinct_1, test_distinct_2]
+where_tests = [test_where_1, test_where_2]
+where_having_tests = [test_where_having_1, test_where_having_2]
 
 selected_tests = [test_agg_1]
 
-tests = distinct_tests
+tests = where_having_tests
 
 def run_tests():
     for i, test in enumerate(tests):

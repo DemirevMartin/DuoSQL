@@ -1,13 +1,13 @@
 """TODO
-    - Extract WHERE statement
     - Add counting rows (e.g., COUNT(*)), similar to the last function in aggregates.sql?
     - Include JOINs in the aggregate query
     - Ensure that everything works for (totally) certain data (different process)
 """
 """
     - Joining sentences - only '&'?
-    - Only agg_or() is used for DISTINCT and aggregation?
-    - conditioning? what was it?
+    - DISTINCT and aggregation - only 'agg_or()' for traversing all worlds?
+    - If the probability of a row is 0, should it be excluded?
+    - conditioning - what was it about?
 """
 import re, os
 from typing import List, Tuple, Optional, Dict
@@ -63,6 +63,17 @@ def extract_select_from_clauses(sql: str) -> Tuple[Optional[str], Optional[str]]
     select_clause = select_match.group(1).strip() if select_match else None
     from_clause = from_match.group(1).strip() if from_match else None
     return select_clause, from_clause
+
+
+def parse_where_clause(sql: str) -> Optional[str]:
+    match = re.search(REGEX_CLAUSE_STRUCTURES['WHERE'], sql, re.IGNORECASE | re.DOTALL)
+    if not match:
+        return None
+    raw_where = match.group(1).strip()
+
+    # Remove table aliases like t1.field → field
+    cleaned_where = re.sub(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\.(?=[a-zA-Z_])", "", raw_where)
+    return cleaned_where
 
 
 def extract_order_by_and_limit(sql: str) -> Tuple[Optional[str], Optional[str]]:
@@ -199,25 +210,13 @@ def requests_probability(sql: str) -> bool:
     return bool(re.search(r"\bprobability\b", sql, re.IGNORECASE | re.DOTALL))
 
 
-# This function parses the SQL query to find the probability filter
-# It looks for the WHERE clause and checks for a probability condition
-# The regex looks for the pattern "probability <op> <value>" where <op> can be >, <, =, etc.
-# and <value> is a number (with optional decimal)
-def parse_probability_filter(sql: str) -> Optional[str]:
-    match = re.search(REGEX_CLAUSE_STRUCTURES['WHERE'], sql, re.IGNORECASE | re.DOTALL)
-    if not match:
-        return None
-    where_clause = match.group(1)
-    prob_filter_match = re.search(r"\bWHERE\s+(.+)?\b(probability\s*[<>!=]{1,2}\s*(?:1\.00|0\.\d{1,2}))", where_clause, re.IGNORECASE | re.DOTALL)
-    return prob_filter_match.group(1) if prob_filter_match else None
-
-
 ########## VIEW CREATION ##########
 
 def generate_drop_views() -> str:
     return (
         "DROP VIEW IF EXISTS prob_view CASCADE;\n"
-        "DROP VIEW IF EXISTS join_view CASCADE;"
+        "DROP VIEW IF EXISTS join_view CASCADE;\n"
+        "DROP VIEW IF EXISTS agg_view CASCADE;"
     )
 
 
@@ -311,7 +310,7 @@ GROUP BY {group_by}, {agg_func};"""
 
 ########## FINAL QUERY CREATION ##########
 def generate_final_query(select_clause: str, with_prob: bool, with_sentence: bool,
-                         prob_condition: Optional[str], needs_prob: bool,
+                         needs_prob: bool, where: Optional[str], 
                          order_by: Optional[str], limit: Optional[str]) -> str:
     output_from = "prob_view" if needs_prob else "join_view"
     show_probability = "probability" if with_prob else ""
@@ -336,8 +335,8 @@ def generate_final_query(select_clause: str, with_prob: bool, with_sentence: boo
 
     query = f"SELECT {', '.join(final_fields)}\nFROM {output_from}"
 
-    if prob_condition:
-        query += f"\nWHERE {prob_condition}"
+    if where:
+        query += f"\nWHERE {where}"
     if order_by:
         query += f"\nORDER BY {order_by}"
     if limit:
@@ -348,7 +347,8 @@ def generate_final_query(select_clause: str, with_prob: bool, with_sentence: boo
 
 def generate_aggregate_query(sql, select_clause: str,
                             with_prob: bool = False, with_sentence: bool = False,
-                            needs_prob: bool = False, order_by: Optional[str] = None,
+                            needs_prob: bool = False, 
+                            where: Optional[str] = None, order_by: Optional[str] = None,
                             limit: Optional[str] = None, dict_name: str = "mydict") -> List[str]:
     
     parts = extract_aggregate_query_parts(sql)
@@ -370,7 +370,7 @@ def generate_aggregate_query(sql, select_clause: str,
 
     # Build the aggregate view
     view_queries = []
-    view_queries.append("DROP VIEW IF EXISTS agg_view CASCADE;")
+    view_queries.append(generate_drop_views())
     view_queries.append(build_aggregate_view(table, [group_by], agg_func, agg_target, alias="agg_view"))
 
     if needs_prob:
@@ -385,8 +385,13 @@ def generate_aggregate_query(sql, select_clause: str,
 
     query = f"SELECT {', '.join(final_fields)}\nFROM {final_output_table}"
 
-    if having:
-        query += f"\nWHERE {having}"
+    if where or having:
+        where = where if where else ""
+        having = having if having else ""
+        where_clause = f"{where} AND {having}" if where and having \
+                        else f"{where}" if where else f"{having}"
+        query += f"\nWHERE {where_clause}"
+
     if order_by:
         query += f"\nORDER BY {order_by}"
     if limit:
@@ -413,9 +418,9 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
     # Check if there is a probability condition
     # NOTE: If SHOW PROBABILITY is not requested, we do not show the probability
     needs_prob = requests_probability(sql)
-    prob_condition = parse_probability_filter(sql)
     needs_sentence = with_sentence is not None or needs_prob
 
+    where = parse_where_clause(sql)
     # Extract ORDER BY and LIMIT clauses
     order_by, limit = extract_order_by_and_limit(sql)
 
@@ -430,6 +435,7 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
             with_prob=with_prob is not None,
             with_sentence=needs_sentence,
             needs_prob=needs_prob,
+            where=where,
             order_by=order_by,
             limit=limit,
             dict_name=dict_name
@@ -449,8 +455,8 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
         select_clause,
         with_prob,
         with_sentence,
-        prob_condition,
         needs_prob,
+        where,
         order_by,
         limit
     )
