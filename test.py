@@ -29,7 +29,6 @@ test_simple_4 = """
 """
 
 ############## JOIN ##############
-
 # -- INNER JOIN with aliases and WHERE clause (find people who played with cats that were witnessed, with high certainty)
 test_join_1 = """
     SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed
@@ -135,7 +134,7 @@ test_certain_data_3 = """
     SHOW SENTENCE;
 """
 
-#####
+############## AGGREGATION ##############
 test_agg_1 = """
     SELECT cat_name, avg(age)
     FROM witnessed
@@ -146,6 +145,19 @@ test_agg_1 = """
     SHOW PROBABILITY
 """
 
+############## DISTINCT ##############
+test_distinct_1 = """
+    SELECT DISTINCT breed
+    FROM witnessed;
+"""
+
+test_distinct_2 = """
+    SELECT DISTINCT color
+    FROM plays
+    WHERE probability > 0.5
+    ORDER BY color;
+"""
+
 
 ########################################
 ############### RUN TESTS ##############
@@ -154,10 +166,11 @@ join_tests = [test_join_1, test_join_2, test_join_3, test_join_4, test_join_5, t
 order_limit_tests = [test_order_limit_1, test_order_limit_2]
 certain_data_tests = [test_certain_data_1, test_certain_data_2, test_certain_data_3]
 aggregation_tests = [test_agg_1]
+distinct_tests = [test_distinct_1, test_distinct_2]
 
 selected_tests = [test_agg_1]
 
-tests = aggregation_tests
+tests = distinct_tests
 
 def run_tests():
     for i, test in enumerate(tests):

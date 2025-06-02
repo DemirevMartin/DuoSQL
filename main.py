@@ -1,14 +1,13 @@
 """TODO
     - Extract WHERE statement
-    - Implement DISTINCT
-    - Counting rows (e.g., COUNT(*)) and similar to the last function in aggregates.sql?
+    - Add counting rows (e.g., COUNT(*)), similar to the last function in aggregates.sql?
     - Include JOINs in the aggregate query
-    - Multiple aggregations in one query?
+    - Ensure that everything works for (totally) certain data (different process)
 """
-""" Questions
-    - When joining sentences, do we always use '&'? Is '|' applicable (user input/logic)?
-    - agg_or() is used for DISTINCT, is agg_and() applicable in any way?
-    - conditioning ?
+"""
+    - Joining sentences - only '&'?
+    - Only agg_or() is used for DISTINCT and aggregation?
+    - conditioning? what was it?
 """
 import re, os
 from typing import List, Tuple, Optional, Dict
@@ -136,7 +135,7 @@ def extract_all_tables(sql: str) -> List[Tuple[str, str]]:
 
 ########## AGGREGATION ##########
 def is_aggregate_query(sql: str) -> bool:
-    return bool(re.search(r"\b(count|sum|avg|min|max)\s*\(", sql, re.IGNORECASE))
+    return bool(re.search(r"\b(count|sum|avg|min|max)\s*\(", sql, re.IGNORECASE | re.DOTALL))
 
 
 def extract_aggregate_query_parts(sql: str) -> Dict[str, Optional[str]]:
@@ -152,8 +151,12 @@ def extract_aggregate_query_parts(sql: str) -> Dict[str, Optional[str]]:
 
     return parts
 
-######### PROBABILISTIC HANDLING ##########
+########### DISTINCT ###########
+def uses_distinct(sql: str) -> bool:
+    return bool(re.match(r"\bSELECT\s+DISTINCT\b", sql, re.IGNORECASE))
 
+
+######### PROBABILISTIC HANDLING ##########
 def get_tables_with_sentence_column(tables: List[str]) -> Dict[str, bool]:
     """
     Checks if each table in the list has a `_sentence` column.
@@ -193,7 +196,7 @@ def generate_sentence_expression(tables: List[Tuple[str, str]], ) -> str:
 
 
 def requests_probability(sql: str) -> bool:
-    return bool(re.search(r"\bprobability\b", sql, re.IGNORECASE))
+    return bool(re.search(r"\bprobability\b", sql, re.IGNORECASE | re.DOTALL))
 
 
 # This function parses the SQL query to find the probability filter
@@ -205,7 +208,7 @@ def parse_probability_filter(sql: str) -> Optional[str]:
     if not match:
         return None
     where_clause = match.group(1)
-    prob_filter_match = re.search(r"\bWHERE\s+(.+)?\b(probability\s*[<>!=]{1,2}\s*(?:1\.00|0\.\d{1,2}))", where_clause, re.IGNORECASE)
+    prob_filter_match = re.search(r"\bWHERE\s+(.+)?\b(probability\s*[<>!=]{1,2}\s*(?:1\.00|0\.\d{1,2}))", where_clause, re.IGNORECASE | re.DOTALL)
     return prob_filter_match.group(1) if prob_filter_match else None
 
 
@@ -218,18 +221,40 @@ def generate_drop_views() -> str:
     )
 
 
-def generate_join_view(select_clause: str, from_clause: str, sentence_expression: str, needs_sentence: bool) -> str:
+def generate_join_view(select_clause: str, from_clause: str,
+                       sentence_expression: str, needs_sentence: bool,
+                       use_distinct: bool = False) -> str:
+
+    # If DISTINCT and needs_sentence, group and use agg_or
+    if use_distinct:
+        # Parse SELECT fields for GROUP BY
+        select_clause = re.sub(r"\s*DISTINCT\s*", "", select_clause, flags=re.IGNORECASE | re.DOTALL).strip()
+        select_fields = [f.strip() for f in select_clause.split(",")]
+        fields_without_aliases = [
+            re.split(r"\s+as\s+", f, flags=re.IGNORECASE | re.DOTALL)[-1].strip() for f in select_fields
+        ]
+
+        join_fields = ", ".join(fields_without_aliases)
+        group_by = ", ".join(fields_without_aliases)
+        select_block = f"{join_fields}, agg_or(_sentence) AS _sentence"
+        return (
+            "CREATE OR REPLACE VIEW join_view AS\n"
+            f"SELECT {select_block}\n"
+            f"FROM {from_clause}\n"
+            f"GROUP BY {group_by};"
+        )
+
     join_fields = select_clause
     if sentence_expression and needs_sentence:
         join_fields += f", {sentence_expression} AS _sentence"
 
-    from_clause = re.sub(r"[\s\t]+", " ", from_clause.strip())
+    from_clause = re.sub(r"[\s\t]+", " ", from_clause.strip(), flags=re.IGNORECASE | re.DOTALL)
 
     formatted_from = re.sub(
         REGEX_JOIN_CLAUSE_START,
         lambda m: f"\n{m.group(0).upper().strip()}",
         from_clause,
-        flags=re.IGNORECASE
+        flags=re.IGNORECASE | re.DOTALL
     )
 
     return (
@@ -294,8 +319,8 @@ def generate_final_query(select_clause: str, with_prob: bool, with_sentence: boo
 
     user_fields = [f.strip() for f in select_clause.split(",")]
     user_fields_as_alias = [
-        re.split(r"\s+as\s+", field_alias, flags=re.IGNORECASE)[1].strip()
-        if re.search(r"\s+as\s+", field_alias, flags=re.IGNORECASE)
+        re.split(r"\s+as\s+", field_alias, flags=re.IGNORECASE | re.DOTALL)[1].strip()
+        if re.search(r"\s+as\s+", field_alias, flags=re.IGNORECASE | re.DOTALL)
         else field_alias.strip()
         for field_alias in user_fields
     ]
@@ -332,7 +357,7 @@ def generate_aggregate_query(sql, select_clause: str,
     table = extract_all_tables(sql)[0][0]  # assume one table for now
 
     # Parse aggregation function and target from SELECT
-    match = re.search(r"\b(count|sum|avg|min|max)\s*\(\s*(\*|\w+)\s*\)(?:\s+AS\s+(\w+)\b)?", select_clause, re.IGNORECASE)
+    match = re.search(r"\b(count|sum|avg|min|max)\s*\(\s*(\*|\w+)\s*\)(?:\s+AS\s+(\w+)\b)?", select_clause, re.IGNORECASE | re.DOTALL)
     if not match:
         return ["ERROR: Unsupported or malformed aggregation."]
     agg_func, agg_target, alias = match.groups()
@@ -379,10 +404,11 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
     select_clause, from_clause = extract_select_from_clauses(sql)
     if not select_clause or not from_clause: # If the SQL query is not valid, return an error message
         return ["ERROR: Invalid SQL query format."]
+    use_distinct = uses_distinct(sql)
     
     # NOTE: This is to solely SHOW the probability <=> different than 'needs_prob'!
-    with_prob = re.search(r"\bSHOW\s+(.+)?\bPROBABILITY", sql.upper())
-    with_sentence = re.search(r"\bSHOW\s+(.+)?\bSENTENCE", sql.upper())
+    with_prob = re.search(r"\bSHOW\s+(.+)?\bPROBABILITY", sql.upper(), re.IGNORECASE | re.DOTALL) 
+    with_sentence = re.search(r"\bSHOW\s+(.+)?\bSENTENCE", sql.upper(), re.IGNORECASE | re.DOTALL)
 
     # Check if there is a probability condition
     # NOTE: If SHOW PROBABILITY is not requested, we do not show the probability
@@ -411,12 +437,15 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
 
     view_queries = []
     view_queries.append(generate_drop_views())
-    view_queries.append(generate_join_view(select_clause, from_clause, sentence_expression, needs_sentence))
+    view_queries.append(generate_join_view(
+        select_clause, from_clause, sentence_expression, 
+        needs_sentence, use_distinct
+    ))
 
     if needs_prob:
         view_queries.append(generate_prob_view("join_view", dict_name))
 
-    view_queries.append(generate_final_query(
+    final_query = generate_final_query(
         select_clause,
         with_prob,
         with_sentence,
@@ -424,5 +453,7 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
         needs_prob,
         order_by,
         limit
-    ))
+    )
+    final_query = re.sub(r"\s*DISTINCT\s*", " ", final_query, flags=re.IGNORECASE | re.DOTALL)  # Remove DISTINCT from the final query
+    view_queries.append(final_query)
     return view_queries
