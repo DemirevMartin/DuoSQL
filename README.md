@@ -38,6 +38,5 @@ pip install -r requirements.txt   # Install Python dependencies
    USER=<POSTGRES_USER>
    PASSWORD=<POSTGRES_PASSWORD>
    HOST=<POSTGRES_HOST>
-   PORT=<POSTGRES_PORT>
    DATABASE=<POSTGRES_DB>
    ```

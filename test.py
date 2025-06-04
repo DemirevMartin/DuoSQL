@@ -111,7 +111,7 @@ test_order_limit_2 = """
 """
 
 ############### UN/CERTAIN Data ##############
-test_certain_data_1 = """
+test_mixed_data_1 = """
     SELECT w.witness, pc.cat_id, w.cat_name, w.color, w.breed
     FROM witnessed w
     JOIN profile_certain pc ON w.cat_name = pc.cat_name
@@ -119,7 +119,7 @@ test_certain_data_1 = """
     ORDER BY pc.cat_id;
 """
 
-test_certain_data_2 = """
+test_mixed_data_2 = """
     SELECT p.companion, pc.cat_id, p.cat_name, p.color
     FROM plays p
     JOIN profile_certain pc ON p.cat_name = pc.cat_name
@@ -127,7 +127,7 @@ test_certain_data_2 = """
     LIMIT 10;
 """
 
-test_certain_data_3 = """
+test_mixed_data_3 = """
     SELECT c.caretaker, pc.cat_id, c.cat_name, c.breed, c.age
     FROM cares c
     JOIN profile_certain pc ON c.cat_name = pc.cat_name
@@ -143,6 +143,38 @@ test_agg_1 = """
     ORDER BY cat_name
     LIMIT 10
     SHOW PROBABILITY
+"""
+
+# Multiple GROUP BY
+test_agg_2 = """
+    SELECT cat_name, breed, avg(age)
+    FROM witnessed
+    GROUP BY cat_name, breed
+    HAVING avg(age) > 2
+    ORDER BY cat_name
+    LIMIT 10
+    SHOW PROBABILITY
+"""
+
+# Multiple aggregation
+test_agg_3 = """
+    SELECT cat_name, avg(age), count(color)
+    FROM witnessed
+    GROUP BY cat_name
+    ORDER BY cat_name
+    LIMIT 10
+    SHOW SENTENCE, PROBABILITY
+"""
+
+# Multiple aggregation + GROUP BY with HAVING
+test_agg_4 = """
+    SELECT cat_name, breed, avg(age), count(color)
+    FROM witnessed
+    GROUP BY cat_name, breed
+    HAVING avg(age) > 2 AND count(color) > 3
+    ORDER BY cat_name
+    LIMIT 10
+    SHOW SENTENCE, PROBABILITY
 """
 
 ############## DISTINCT ##############
@@ -201,20 +233,35 @@ test_where_having_2 = """
 """
 
 
+############ CERTAIN DATA TESTS ##############
+test_certain_data_1 = """
+    SELECT *
+    FROM profile_certain pc
+"""
+
+test_certain_data_2 = """
+    SELECT pc.cat_id, pc.cat_name, pc.color, pc.breed, pc.age
+    FROM profile_certain pc
+    WHERE pc.age > 2
+    ORDER BY pc.cat_name
+    SHOW SENTENCE
+"""
+
 ########################################
 ############### RUN TESTS ##############
 simple_tests = [test_simple_1, test_simple_2, test_simple_3, test_simple_4]
 join_tests = [test_join_1, test_join_2, test_join_3, test_join_4, test_join_5, test_join_6, test_join_7]
 order_limit_tests = [test_order_limit_1, test_order_limit_2]
-certain_data_tests = [test_certain_data_1, test_certain_data_2, test_certain_data_3]
-aggregation_tests = [test_agg_1]
+mixed_data_tests = [test_mixed_data_1, test_mixed_data_2, test_mixed_data_3]
+aggregation_tests = [test_agg_1, test_agg_2, test_agg_3, test_agg_4]
 distinct_tests = [test_distinct_1, test_distinct_2]
 where_tests = [test_where_1, test_where_2]
 where_having_tests = [test_where_having_1, test_where_having_2]
+certain_data_tests = [test_certain_data_1, test_certain_data_2]
 
-selected_tests = [test_agg_1]
+selected_tests = [test_agg_3, test_agg_4]
 
-tests = where_having_tests
+tests = selected_tests
 
 def run_tests():
     for i, test in enumerate(tests):

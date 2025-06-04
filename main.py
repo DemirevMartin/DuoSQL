@@ -1,12 +1,12 @@
 """TODO
-    - Add counting rows (e.g., COUNT(*)), similar to the last function in aggregates.sql?
     - Include JOINs in the aggregate query
-    - Ensure that everything works for (totally) certain data (different process)
+    - Add counting rows (e.g., COUNT(*)), similar to the last function in aggregates.sql?
 """
 """
     - Joining sentences - only '&'?
     - DISTINCT and aggregation - only 'agg_or()' for traversing all worlds?
-    - If the probability of a row is 0, should it be excluded?
+    - If the probability of a row is 0, should it be excluded? 
+    - If a value of something is NULL (avg, count)?
     - conditioning - what was it about?
 """
 import re, os
@@ -173,7 +173,7 @@ def get_tables_with_sentence_column(tables: List[str]) -> Dict[str, bool]:
     Checks if each table in the list has a `_sentence` column.
     Returns a dictionary: {table_name: True/False}
     """
-    tables_with_sentence_column = []
+    tables_with_sentence_column: dict[str, bool] = {}
     with engine.connect() as conn:
         for table in set(tables):
             query = text("""
@@ -185,14 +185,25 @@ def get_tables_with_sentence_column(tables: List[str]) -> Dict[str, bool]:
             """)
             has_sentence = conn.execute(query, {"table": table}).scalar() is not None
             if has_sentence:
-                tables_with_sentence_column.append(table)
+                tables_with_sentence_column[table] = True
     return tables_with_sentence_column
 
 
-def generate_sentence_expression(tables: List[Tuple[str, str]], ) -> str:
+def has_uncertainty(tables_with_sentence_column: Dict[str, bool]) -> bool:
+    """
+    Checks if any table in the provided dictionary has a `_sentence` column.
+    Returns True if at least one table has it, otherwise False.
+    """
+    return any(tables_with_sentence_column.values())
+
+
+def generate_sentence_expression(tables: List[Tuple[str, str]]) -> str:
     table_names = [tbl for tbl, _ in tables]
     tables_with_sentence_column = get_tables_with_sentence_column(table_names)
     
+    if not has_uncertainty(tables_with_sentence_column):
+        return "certain"
+
     if not tables_with_sentence_column:
         return None
     
@@ -427,6 +438,11 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
     # Extract all tables and their aliases
     tables = extract_all_tables(sql)
     sentence_expression = generate_sentence_expression(tables)
+
+    if sentence_expression == "certain":
+        if with_prob or with_sentence:
+            sql = re.sub(r"\bSHOW.*", "", sql, flags=re.IGNORECASE | re.DOTALL)
+        return [sql]
 
     # Check for aggregate query
     if is_aggregate_query(sql):
