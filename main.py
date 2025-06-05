@@ -1,12 +1,14 @@
 """TODO
-    - Include JOINs in the aggregate query
+    - Include JOINs in the aggregate query 🛠️
+    - Include JOINs for DISTINCT queries 🛠️
+    - Multiple aggregations
     - Add counting rows (e.g., COUNT(*)), similar to the last function in aggregates.sql?
 """
 """
     - Joining sentences - only '&'?
     - DISTINCT and aggregation - only 'agg_or()' for traversing all worlds?
     - If the probability of a row is 0, should it be excluded? 
-    - If a value of something is NULL (avg, count)?
+    - If a value of something is NULL (avg, count)? Always filter it out?
     - conditioning - what was it about?
 """
 import re, os
@@ -65,15 +67,21 @@ def extract_select_from_clauses(sql: str) -> Tuple[Optional[str], Optional[str]]
     return select_clause, from_clause
 
 
+def remove_table_aliases(clause: str) -> str:
+    """
+    Removes table aliases from any clause. Excludes cases like 2.00 and similar (e.g., in WHERE).
+    Example: "t1.field AS field" → "field"; "a.field > 2.00" → "field > 2.00"
+    """
+    cleaned_clause = re.sub(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\.(?=[a-zA-Z_])", "", clause)
+    return cleaned_clause.strip()
+
+
 def parse_where_clause(sql: str) -> Optional[str]:
     match = re.search(REGEX_CLAUSE_STRUCTURES['WHERE'], sql, re.IGNORECASE | re.DOTALL)
     if not match:
         return None
     raw_where = match.group(1).strip()
-
-    # Remove table aliases like t1.field → field
-    cleaned_where = re.sub(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\.(?=[a-zA-Z_])", "", raw_where)
-    return cleaned_where
+    return raw_where
 
 
 def extract_order_by_and_limit(sql: str) -> Tuple[Optional[str], Optional[str]]:
@@ -283,45 +291,56 @@ def generate_prob_view(view: str, dict_name: str) -> str:
     )
 
 
-def build_aggregate_view(table: str, group_cols: list[str], agg_func: str, agg_field: str, alias: str = "agg_view") -> str:
+def build_aggregate_view(from_clause: str, group_cols: list[str], 
+                         agg_func: str, agg_field: str, 
+                         sentence_expression: str,
+                         where: Optional[str]) -> str:
+    # TODO Handle aliases appropriately
     """
     Build an SQL view to compute probabilistic aggregates.
-    :param table: The table name (e.g., 'witnessed')
+    :param tables: The table names (e.g., 'witnessed')
     :param group_cols: List of columns to group by (e.g., ['cat_name'])
     :param agg_func: Aggregate function: 'count', 'sum', 'avg', 'min', 'max'
     :param agg_field: Field to aggregate (e.g., 'age')
-    :param alias: Name for the final view
     """
     agg_func = agg_func.lower()
-    bdd_func = f"prob_Bdd_{agg_func}"
+    bdd_aggregation_func = f"prob_Bdd_{agg_func}"
+    group_by_no_aliases = ', '.join([re.sub(r"^\w+\.", "", col.strip()) for col in group_cols])
     group_by = ", ".join(group_cols)
-    arr = f"array_agg({agg_field})"
+
+    inner_group_by_clauses = []
+    inner_group_by_clauses.append("" if '&' in sentence_expression else f"\nGROUP BY {group_by}, {agg_field}")
+    # inner_group_by_clauses.append("GROUP BY TRUE" if '&' in sentence_expression else f"GROUP BY {group_by}")
+    inner_group_by_clauses.append(f"GROUP BY {group_by_no_aliases}")
+
+    arr = f"array_agg({agg_field})" # The agg field can keep its alias
+    inner_sentence = f"agg_or(_sentence)" if '&' not in sentence_expression else sentence_expression
     arr_sentence = "array_agg(_sentence)"
     mask_gen = "generate_series(0,(pow(2,array_length(arr_sentence,1))-1)::int)::bit(32)"
 
-    return f"""CREATE OR REPLACE VIEW {alias} AS
-SELECT {group_by}, {agg_func}, agg_or(_sentence) AS _sentence
+    return f"""CREATE OR REPLACE VIEW agg_view AS
+SELECT {group_by_no_aliases}, {agg_func}, agg_or(_sentence) AS _sentence
 FROM (
-    SELECT {group_by}, {bdd_func}(arr,mask) AS {agg_func}, prob_Bdd(arr_sentence,mask) AS _sentence, arr, arr_sentence, mask
+    SELECT {group_by_no_aliases}, {bdd_aggregation_func}(arr,mask) AS {agg_func}, prob_Bdd(arr_sentence,mask) AS _sentence, arr, arr_sentence, mask
     FROM (
-        SELECT {group_by}, arr, arr_sentence, {mask_gen} AS mask
+        SELECT {group_by_no_aliases}, arr, arr_sentence, {mask_gen} AS mask
         FROM (
-            SELECT {group_by}, {arr} arr, {arr_sentence} arr_sentence
+            SELECT {group_by_no_aliases}, {arr} arr, {arr_sentence} arr_sentence
             FROM (
-                SELECT {group_by}, {agg_field}, agg_or(_sentence) AS _sentence
-                FROM {table}
-                GROUP BY {group_by}, {agg_field}
+                SELECT {group_by}, {agg_field}, {inner_sentence} AS _sentence
+                FROM {from_clause}
+                {f"WHERE {where}" if where else ""}{inner_group_by_clauses[0]}
             ) AS first
-            GROUP BY {group_by}
+            {inner_group_by_clauses[1]}
         ) AS second
     ) AS third
 ) AS forth
-GROUP BY {group_by}, {agg_func};"""
+GROUP BY {group_by_no_aliases}, {agg_func};"""
 
 
 ########## FINAL QUERY CREATION ##########
 def generate_final_query(select_clause: str, with_prob: bool, with_sentence: bool,
-                         needs_prob: bool, where: Optional[str], 
+                         needs_prob: bool, where: Optional[str], having: Optional[str],
                          order_by: Optional[str], limit: Optional[str]) -> str:
     output_from = "prob_view" if needs_prob else "join_view"
     show_probability = "probability" if with_prob else ""
@@ -346,8 +365,17 @@ def generate_final_query(select_clause: str, with_prob: bool, with_sentence: boo
 
     query = f"SELECT {', '.join(final_fields)}\nFROM {output_from}"
 
-    if where:
-        query += f"\nWHERE {where}"
+    # NOTE: If anything else rather than probability is used in the HAVING,
+    # there is no error handling
+    if where or having:
+        where = remove_table_aliases(where) if where else None
+        if where and having:
+            query += f"\nWHERE {where} AND {having}"
+        elif where:
+            query += f"\nWHERE {where}"
+        else: # having
+            query += f"\nWHERE {having}"
+
     if order_by:
         query += f"\nORDER BY {order_by}"
     if limit:
@@ -356,16 +384,13 @@ def generate_final_query(select_clause: str, with_prob: bool, with_sentence: boo
     return query + ";"
 
 
-def generate_aggregate_query(sql, select_clause: str,
+def generate_aggregate_query(select_clause: str, from_clause: str,
+                            group_by: str, having: str,
                             with_prob: bool = False, with_sentence: bool = False,
+                            sentence_expression: str = "certain",
                             needs_prob: bool = False, 
                             where: Optional[str] = None, order_by: Optional[str] = None,
                             limit: Optional[str] = None, dict_name: str = "mydict") -> List[str]:
-    
-    parts = extract_aggregate_query_parts(sql)
-    group_by = parts.get("group")
-    having = parts.get("having")
-    table = extract_all_tables(sql)[0][0]  # assume one table for now
 
     # Parse aggregation function and target from SELECT
     match = re.search(r"\b(count|sum|avg|min|max)\s*\(\s*(\*|\w+)\s*\)(?:\s+AS\s+(\w+)\b)?", select_clause, re.IGNORECASE | re.DOTALL)
@@ -382,7 +407,7 @@ def generate_aggregate_query(sql, select_clause: str,
     # Build the aggregate view
     view_queries = []
     view_queries.append(generate_drop_views())
-    view_queries.append(build_aggregate_view(table, [group_by], agg_func, agg_target, alias="agg_view"))
+    view_queries.append(build_aggregate_view(from_clause, [group_by], agg_func, agg_target, sentence_expression, where))
 
     if needs_prob:
         view_queries.append(generate_prob_view("agg_view", dict_name))
@@ -394,15 +419,11 @@ def generate_aggregate_query(sql, select_clause: str,
     if with_sentence:
         final_fields.append("_sentence")
 
+    final_fields = remove_table_aliases(', '.join(final_fields)).split(', ')
     query = f"SELECT {', '.join(final_fields)}\nFROM {final_output_table}"
 
-    if where or having:
-        where = where if where else ""
-        having = having if having else ""
-        where_clause = f"{where} AND {having}" if where and having \
-                        else f"{where}" if where else f"{having}"
-        query += f"\nWHERE {where_clause}"
-
+    if having: # Everything has been grouped and aggregated, so we use WHERE instead of HAVING
+        query += f"\nWHERE {having}"
     if order_by:
         query += f"\nORDER BY {order_by}"
     if limit:
@@ -435,11 +456,18 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
     # Extract ORDER BY and LIMIT clauses
     order_by, limit = extract_order_by_and_limit(sql)
 
+    parts = extract_aggregate_query_parts(sql)
+    group_by = parts.get("group")
+    having = parts.get("having")
+
     # Extract all tables and their aliases
     tables = extract_all_tables(sql)
     sentence_expression = generate_sentence_expression(tables)
 
+    # Check if the data is completely certain
     if sentence_expression == "certain":
+        if having and re.search(r"\bprobability\b", having, re.IGNORECASE | re.DOTALL): 
+            return ["ERROR: Cannot show probability for (only) certain data."]
         if with_prob or with_sentence:
             sql = re.sub(r"\bSHOW.*", "", sql, flags=re.IGNORECASE | re.DOTALL)
         return [sql]
@@ -447,9 +475,10 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
     # Check for aggregate query
     if is_aggregate_query(sql):
         return generate_aggregate_query(
-            sql, select_clause,
+            select_clause, from_clause, group_by, having,
             with_prob=with_prob is not None,
             with_sentence=needs_sentence,
+            sentence_expression=sentence_expression,
             needs_prob=needs_prob,
             where=where,
             order_by=order_by,
@@ -473,6 +502,7 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
         with_sentence,
         needs_prob,
         where,
+        having,
         order_by,
         limit
     )
