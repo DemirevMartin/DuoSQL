@@ -167,31 +167,41 @@ test_agg_2 = """
     SHOW PROBABILITY
 """
 
-# Multiple aggregation -- TODO
-test_agg_3 = """
-    SELECT cat_name, avg(age), count(color)
-    FROM witnessed
-    GROUP BY cat_name
-    ORDER BY cat_name
-    LIMIT 10
-    SHOW SENTENCE, PROBABILITY
-"""
+# # Multiple aggregation -- TODO
+# test_agg_3 = """
+#     SELECT cat_name, avg(age), count(color)
+#     FROM witnessed
+#     GROUP BY cat_name
+#     ORDER BY cat_name
+#     LIMIT 10
+#     SHOW SENTENCE, PROBABILITY
+# """
 
-# Multiple aggregation + GROUP BY with HAVING -- TODO
-test_agg_4 = """
-    SELECT cat_name, breed, avg(age), count(color)
-    FROM witnessed
-    GROUP BY cat_name, breed
-    HAVING avg(age) > 2 AND count(color) > 3
-    ORDER BY cat_name
-    LIMIT 10
-    SHOW SENTENCE, PROBABILITY
-"""
+# # Multiple aggregation + GROUP BY with HAVING -- TODO
+# test_agg_4 = """
+#     SELECT cat_name, breed, avg(age), count(color)
+#     FROM witnessed
+#     GROUP BY cat_name, breed
+#     HAVING avg(age) > 2 AND count(color) > 3
+#     ORDER BY cat_name
+#     LIMIT 10
+#     SHOW SENTENCE, PROBABILITY
+# """
 
 test_agg_5 = """
     SELECT w.cat_name, count(companion)
     FROM plays p, witnessed w
     WHERE w.cat_name = p.cat_name
+    GROUP BY w.cat_name
+    ORDER BY w.cat_name
+    SHOW SENTENCE, PROBABILITY
+"""
+
+test_agg_6 = """
+    SELECT w.cat_name, count(companion)
+    FROM plays p
+    JOIN witnessed w ON w.cat_name = p.cat_name
+    WHERE w.color = p.color
     GROUP BY w.cat_name
     ORDER BY w.cat_name
     SHOW SENTENCE, PROBABILITY
@@ -210,13 +220,29 @@ test_distinct_2 = """
     ORDER BY color;
 """
 
-# TODO
 test_distinct_3 = """
     SELECT DISTINCT p.age
     FROM plays p, witnessed w
     WHERE w.cat_name = p.cat_name
     HAVING probability > 0.5
-    ORDER BY color;
+    ORDER BY age;
+"""
+
+test_distinct_4 = """
+    SELECT DISTINCT p.age
+    FROM plays p
+    JOIN witnessed w ON w.cat_name = p.cat_name
+    HAVING probability > 0.5
+    ORDER BY age;
+"""
+
+test_distinct_5 = """
+    SELECT DISTINCT w.witness, p.companion AS player, c.caretaker, o.owner, w.cat_name
+    FROM witnessed w
+    JOIN plays p ON w.cat_name = p.cat_name
+    JOIN cares c ON w.cat_name = c.cat_name
+    JOIN owns o ON w.cat_name = o.cat_name
+    SHOW SENTENCE, PROBABILITY
 """
 
 ############### WHERE and HAVING ##############
@@ -285,21 +311,62 @@ test_certain_data_3 = """
     SHOW SENTENCE, PROBABILITY
 """
 
+############### LARGE QUERY TESTS ##############
+test_large_query_1 = """
+    SELECT w.witness, p.companion AS player, c.caretaker, o.owner, w.cat_name
+    FROM witnessed w
+    JOIN plays p ON w.cat_name = p.cat_name
+    JOIN cares c ON w.cat_name = c.cat_name
+    JOIN owns o ON w.cat_name = o.cat_name
+    WHERE w.cat_name = 'max' AND w.color = 'gray'
+    HAVING probability > 0.5
+    ORDER BY w.witness DESC, probability ASC
+    LIMIT 10
+    SHOW SENTENCE, PROBABILITY
+"""
+
+test_large_query_2 = """
+    SELECT w.witness, p.companion AS player, count(w.color) AS color_count
+    FROM witnessed w
+    JOIN plays p ON w.cat_name = p.cat_name
+    WHERE w.cat_name = 'max'
+    GROUP BY w.witness, p.companion, w.cat_name
+    HAVING probability > 0.5 AND color_count > 0
+    ORDER BY w.witness DESC, probability ASC
+    LIMIT 10
+    SHOW SENTENCE, PROBABILITY
+"""
+
+test_large_query_3 = """
+    SELECT w.witness, p.companion AS player, c.caretaker, o.owner, count(w.color) AS color_count
+    FROM witnessed w
+    JOIN plays p ON w.cat_name = p.cat_name
+    JOIN cares c ON w.cat_name = c.cat_name
+    JOIN owns o ON w.cat_name = o.cat_name
+    WHERE w.cat_name = 'max'
+    GROUP BY w.witness, p.companion, c.caretaker, o.owner, w.cat_name
+    HAVING probability > 0.5 AND color_count > 0
+    ORDER BY w.witness DESC, probability ASC
+    LIMIT 10
+    SHOW SENTENCE, PROBABILITY
+"""
+
 ########################################
 ############### RUN TESTS ##############
 simple_tests = [test_simple_1, test_simple_2, test_simple_3, test_simple_4]
 join_tests = [test_join_1, test_join_2, test_join_3, test_join_4, test_join_5, test_join_6, test_join_7, test_join_8]
 order_limit_tests = [test_order_limit_1, test_order_limit_2]
 mixed_data_tests = [test_mixed_data_1, test_mixed_data_2, test_mixed_data_3]
-aggregation_tests = [test_agg_1, test_agg_2, test_agg_3, test_agg_4, test_agg_5]
-distinct_tests = [test_distinct_1, test_distinct_2, test_distinct_3]
+aggregation_tests = [test_agg_1, test_agg_2, test_agg_5]
+distinct_tests = [test_distinct_1, test_distinct_2, test_distinct_3, test_distinct_4, test_distinct_5]
 where_tests = [test_where_1, test_where_2]
 where_having_tests = [test_where_having_1, test_where_having_2]
 certain_data_tests = [test_certain_data_1, test_certain_data_2, test_certain_data_3]
+large_query_tests = [test_large_query_1, test_large_query_2]
 
-selected_tests = [test_agg_5]
+selected_tests = [test_large_query_2]
 
-tests = certain_data_tests
+tests = selected_tests
 
 def run_tests():
     for i, test in enumerate(tests):

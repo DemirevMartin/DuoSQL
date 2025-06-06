@@ -1,8 +1,7 @@
 """TODO
-    - Include JOINs in the aggregate query 🛠️
-    - Include JOINs for DISTINCT queries 🛠️
-    - Multiple aggregations
-    - Add counting rows (e.g., COUNT(*)), similar to the last function in aggregates.sql?
+    - Add counting rows (e.g., COUNT(*)) - where the result is 1 cell
+    - Multiple aggregations ?
+    - Combination of aggregation and DISTINCT ?
 """
 """
     - Joining sentences - only '&'?
@@ -239,46 +238,48 @@ def generate_drop_views() -> str:
     )
 
 
-def generate_join_view(select_clause: str, from_clause: str,
+def generate_join_view(select_clause: str, from_clause: str, where_clause: str,
                        sentence_expression: str, needs_sentence: bool,
-                       use_distinct: bool = False) -> str:
-
-    # If DISTINCT and needs_sentence, group and use agg_or
-    if use_distinct:
-        # Parse SELECT fields for GROUP BY
-        select_clause = re.sub(r"\s*DISTINCT\s*", "", select_clause, flags=re.IGNORECASE | re.DOTALL).strip()
-        select_fields = [f.strip() for f in select_clause.split(",")]
-        fields_without_aliases = [
-            re.split(r"\s+as\s+", f, flags=re.IGNORECASE | re.DOTALL)[-1].strip() for f in select_fields
-        ]
-
-        join_fields = ", ".join(fields_without_aliases)
-        group_by = ", ".join(fields_without_aliases)
-        select_block = f"{join_fields}, agg_or(_sentence) AS _sentence"
-        return (
-            "CREATE OR REPLACE VIEW join_view AS\n"
-            f"SELECT {select_block}\n"
-            f"FROM {from_clause}\n"
-            f"GROUP BY {group_by};"
-        )
-
-    join_fields = select_clause
-    if sentence_expression and needs_sentence:
-        join_fields += f", {sentence_expression} AS _sentence"
+                       use_distinct: bool) -> str:
 
     from_clause = re.sub(r"[\s\t]+", " ", from_clause.strip(), flags=re.IGNORECASE | re.DOTALL)
-
     formatted_from = re.sub(
         REGEX_JOIN_CLAUSE_START,
         lambda m: f"\n{m.group(0).upper().strip()}",
         from_clause,
         flags=re.IGNORECASE | re.DOTALL
     )
+    where_clause = "" if not where_clause else f"\nWHERE {where_clause}"
+
+    # DISTINCT handling
+    if use_distinct:
+        select_clause = re.sub(r"\s*DISTINCT\s*", "", select_clause, flags=re.IGNORECASE | re.DOTALL).strip()
+
+        # Parse SELECT fields for GROUP BY
+        select_fields = [f.strip() for f in select_clause.split(",")]
+        fields_without_aliases = [
+            re.split(r"\s+as\s+", f, flags=re.IGNORECASE | re.DOTALL)[-1].strip() for f in select_fields
+        ]
+        group_by = ", ".join(fields_without_aliases)
+
+        select_clause += f", agg_or({sentence_expression}) AS _sentence"
+
+        return (
+            "CREATE OR REPLACE VIEW join_view AS"
+            f"\nSELECT {select_clause}"
+            f"\nFROM {formatted_from}"
+            f"{where_clause}"
+            f"\nGROUP BY {group_by};"
+        )
+
+    if sentence_expression and needs_sentence:
+        select_clause += f", {sentence_expression} AS _sentence"
 
     return (
-        "CREATE OR REPLACE VIEW join_view AS\n"
-        f"SELECT {join_fields}\n"
-        f"FROM {formatted_from};"
+        "CREATE OR REPLACE VIEW join_view AS"
+        f"\nSELECT {select_clause}"
+        f"\nFROM {formatted_from}"
+        f"{where_clause};"
     )
 
 
@@ -292,55 +293,56 @@ def generate_prob_view(view: str, dict_name: str) -> str:
 
 
 def build_aggregate_view(from_clause: str, group_cols: list[str], 
-                         agg_func: str, agg_field: str, 
+                         agg_func, agg_target, final_agg_name: str, 
                          sentence_expression: str,
                          where: Optional[str]) -> str:
-    # TODO Handle aliases appropriately
-    """
-    Build an SQL view to compute probabilistic aggregates.
-    :param tables: The table names (e.g., 'witnessed')
-    :param group_cols: List of columns to group by (e.g., ['cat_name'])
-    :param agg_func: Aggregate function: 'count', 'sum', 'avg', 'min', 'max'
-    :param agg_field: Field to aggregate (e.g., 'age')
-    """
+    from_clause = re.sub(r"[\s\t]+", " ", from_clause.strip(), flags=re.IGNORECASE | re.DOTALL)
+    formatted_from = re.sub(
+        REGEX_JOIN_CLAUSE_START,
+        lambda m: f"\n{m.group(0).upper().strip()}",
+        from_clause,
+        flags=re.IGNORECASE | re.DOTALL
+    )
+    where = f"WHERE {where}" if where else ""
+
     agg_func = agg_func.lower()
     bdd_aggregation_func = f"prob_Bdd_{agg_func}"
-    group_by_no_aliases = ', '.join([re.sub(r"^\w+\.", "", col.strip()) for col in group_cols])
+    group_by_no_aliases = remove_table_aliases(', '.join(group_cols)).strip()
     group_by = ", ".join(group_cols)
 
     inner_group_by_clauses = []
-    inner_group_by_clauses.append("" if '&' in sentence_expression else f"\nGROUP BY {group_by}, {agg_field}")
-    # inner_group_by_clauses.append("GROUP BY TRUE" if '&' in sentence_expression else f"GROUP BY {group_by}")
+    inner_group_by_clauses.append("" if '&' in sentence_expression else f"\nGROUP BY {group_by}, {agg_target}")
+    # TODO inner_group_by_clauses.append("GROUP BY TRUE" if '&' in sentence_expression else f"GROUP BY {group_by}")
     inner_group_by_clauses.append(f"GROUP BY {group_by_no_aliases}")
 
-    arr = f"array_agg({agg_field})" # The agg field can keep its alias
+    arr = f"array_agg({remove_table_aliases(agg_target)})"
     inner_sentence = f"agg_or(_sentence)" if '&' not in sentence_expression else sentence_expression
     arr_sentence = "array_agg(_sentence)"
-    mask_gen = "generate_series(0,(pow(2,array_length(arr_sentence,1))-1)::int)::bit(32)"
+    mask_gen = "generate_series(0,(pow(2,array_length(arr_sentence,1))-1)::bigint)::bit(32)"
 
     return f"""CREATE OR REPLACE VIEW agg_view AS
-SELECT {group_by_no_aliases}, {agg_func}, agg_or(_sentence) AS _sentence
+SELECT {group_by_no_aliases}, {final_agg_name}, agg_or(_sentence) AS _sentence
 FROM (
-    SELECT {group_by_no_aliases}, {bdd_aggregation_func}(arr,mask) AS {agg_func}, prob_Bdd(arr_sentence,mask) AS _sentence, arr, arr_sentence, mask
+    SELECT {group_by_no_aliases}, {bdd_aggregation_func}(arr,mask) AS {final_agg_name}, prob_Bdd(arr_sentence,mask) AS _sentence, arr, arr_sentence, mask
     FROM (
         SELECT {group_by_no_aliases}, arr, arr_sentence, {mask_gen} AS mask
         FROM (
             SELECT {group_by_no_aliases}, {arr} arr, {arr_sentence} arr_sentence
             FROM (
-                SELECT {group_by}, {agg_field}, {inner_sentence} AS _sentence
-                FROM {from_clause}
-                {f"WHERE {where}" if where else ""}{inner_group_by_clauses[0]}
+                SELECT {group_by}, {agg_target}, {inner_sentence} AS _sentence
+                FROM {formatted_from}
+                {where}{inner_group_by_clauses[0]}
             ) AS first
             {inner_group_by_clauses[1]}
         ) AS second
     ) AS third
 ) AS forth
-GROUP BY {group_by_no_aliases}, {agg_func};"""
+GROUP BY {group_by_no_aliases}, {final_agg_name};"""
 
 
 ########## FINAL QUERY CREATION ##########
 def generate_final_query(select_clause: str, with_prob: bool, with_sentence: bool,
-                         needs_prob: bool, where: Optional[str], having: Optional[str],
+                         needs_prob: bool, having: Optional[str],
                          order_by: Optional[str], limit: Optional[str]) -> str:
     output_from = "prob_view" if needs_prob else "join_view"
     show_probability = "probability" if with_prob else ""
@@ -348,14 +350,12 @@ def generate_final_query(select_clause: str, with_prob: bool, with_sentence: boo
 
     user_fields = [f.strip() for f in select_clause.split(",")]
     user_fields_as_alias = [
-        re.split(r"\s+as\s+", field_alias, flags=re.IGNORECASE | re.DOTALL)[1].strip()
+        re.split(r"\s+as\s+", field_alias, flags=re.IGNORECASE | re.DOTALL)[1].strip() # The [1] is the alias part
         if re.search(r"\s+as\s+", field_alias, flags=re.IGNORECASE | re.DOTALL)
         else field_alias.strip()
         for field_alias in user_fields
     ]
-    fields_without_table_alias = [
-        re.sub(r"^\w+\.", "", field_alias) for field_alias in user_fields_as_alias
-    ]
+    fields_without_table_alias = remove_table_aliases(', '.join(user_fields_as_alias)).split(', ')
 
     final_fields = fields_without_table_alias
     if show_probability:
@@ -365,17 +365,8 @@ def generate_final_query(select_clause: str, with_prob: bool, with_sentence: boo
 
     query = f"SELECT {', '.join(final_fields)}\nFROM {output_from}"
 
-    # NOTE: If anything else rather than probability is used in the HAVING,
-    # there is no error handling
-    if where or having:
-        where = remove_table_aliases(where) if where else None
-        if where and having:
-            query += f"\nWHERE {where} AND {having}"
-        elif where:
-            query += f"\nWHERE {where}"
-        else: # having
-            query += f"\nWHERE {having}"
-
+    if having:
+        query += f"\nWHERE {having}"
     if order_by:
         query += f"\nORDER BY {order_by}"
     if limit:
@@ -393,21 +384,22 @@ def generate_aggregate_query(select_clause: str, from_clause: str,
                             limit: Optional[str] = None, dict_name: str = "mydict") -> List[str]:
 
     # Parse aggregation function and target from SELECT
-    match = re.search(r"\b(count|sum|avg|min|max)\s*\(\s*(\*|\w+)\s*\)(?:\s+AS\s+(\w+)\b)?", select_clause, re.IGNORECASE | re.DOTALL)
+    match = re.search(r"\b(count|sum|avg|min|max)\s*\(\s*(\*|(?:\w+\.)?\w+)\s*\)(?:\s+AS\s+(\w+)\b)?", select_clause, re.IGNORECASE | re.DOTALL)
     if not match:
         return ["ERROR: Unsupported or malformed aggregation."]
     agg_func, agg_target, alias = match.groups()
     agg_target = "1" if agg_target == "*" else agg_target
     
     # Handle alias presence
-    original_agg_field = f"{agg_func}({agg_target}) AS {alias}" if alias else f"{agg_func}({agg_target})"
-    final_agg_field = f"{agg_func} AS {alias}" if alias else f"{agg_func}"
-    having = having.replace(original_agg_field, final_agg_field) if having else None
+    combined_agg_no_alias = f"{agg_func}({agg_target})"
+    final_agg_field = alias if alias else agg_func
+    having = having.replace(combined_agg_no_alias, final_agg_field) if having else None
 
     # Build the aggregate view
     view_queries = []
     view_queries.append(generate_drop_views())
-    view_queries.append(build_aggregate_view(from_clause, [group_by], agg_func, agg_target, sentence_expression, where))
+    view_queries.append(build_aggregate_view(from_clause, [group_by], 
+                                             agg_func, agg_target, final_agg_field, sentence_expression, where))
 
     if needs_prob:
         view_queries.append(generate_prob_view("agg_view", dict_name))
@@ -467,7 +459,7 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
     # Check if the data is completely certain
     if sentence_expression == "certain":
         if having and re.search(r"\bprobability\b", having, re.IGNORECASE | re.DOTALL): 
-            return ["ERROR: Cannot show probability for (only) certain data."]
+            return ["ERROR: Cannot show probability for completely certain data."]
         if with_prob or with_sentence:
             sql = re.sub(r"\bSHOW.*", "", sql, flags=re.IGNORECASE | re.DOTALL)
         return [sql]
@@ -489,7 +481,7 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
     view_queries = []
     view_queries.append(generate_drop_views())
     view_queries.append(generate_join_view(
-        select_clause, from_clause, sentence_expression, 
+        select_clause, from_clause, where, sentence_expression, 
         needs_sentence, use_distinct
     ))
 
@@ -501,7 +493,6 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
         with_prob,
         with_sentence,
         needs_prob,
-        where,
         having,
         order_by,
         limit
