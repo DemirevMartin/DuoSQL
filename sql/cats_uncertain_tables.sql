@@ -1,12 +1,12 @@
 -- Columns that could be added:
     -- location (the facilities in the clinic)
+    -- datetime
 
 -- Tables that could be added:
     -- (person) 'likes' (cat)
     -- (person) 'dislikes' (cat)
     -- (cat) 'cat_likes' (person)
     -- (cat) 'cat_dislikes' (person)
-
 
 CREATE TABLE witnessed (
     id integer,

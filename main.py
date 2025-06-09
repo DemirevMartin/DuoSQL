@@ -1,14 +1,9 @@
 """TODO
-    - Add counting rows (e.g., COUNT(*)) - where the result is 1 cell
-    - Multiple aggregations ?
-    - Combination of aggregation and DISTINCT ?
+    - Filter NULL and Bdd(0); and probability = 0 ?
 """
 """
-    - Joining sentences - only '&'?
-    - DISTINCT and aggregation - only 'agg_or()' for traversing all worlds?
-    - If the probability of a row is 0, should it be excluded? 
-    - If a value of something is NULL (avg, count)? Always filter it out?
-    - conditioning - what was it about?
+    - Joining sentences - only '&'
+    - DISTINCT and aggregation - only 'agg_or()' for traversing all worlds
 """
 import re, os
 from typing import List, Tuple, Optional, Dict
@@ -156,6 +151,14 @@ def is_aggregate_query(sql: str) -> bool:
     return bool(re.search(r"\b(count|sum|avg|min|max)\s*\(", sql, re.IGNORECASE | re.DOTALL))
 
 
+def is_aggregate_all_query(sql: str) -> bool:
+    """
+    Checks if the SQL query is an aggregate query that uses all rows (e.g., COUNT(*)).
+    Returns True if it is, otherwise False.
+    """
+    return bool(re.search(r"\b(count|sum|avg|min|max)\s*\(\s*\*\s*\)", sql, re.IGNORECASE | re.DOTALL))
+
+
 def extract_aggregate_query_parts(sql: str) -> Dict[str, Optional[str]]:
     sql = sql.strip().rstrip(';') + ';'  # normalize
     parts = {}
@@ -234,7 +237,8 @@ def generate_drop_views() -> str:
     return (
         "DROP VIEW IF EXISTS prob_view CASCADE;\n"
         "DROP VIEW IF EXISTS join_view CASCADE;\n"
-        "DROP VIEW IF EXISTS agg_view CASCADE;"
+        "DROP VIEW IF EXISTS agg_view CASCADE;\n"
+        "DROP VIEW IF EXISTS agg_all_view CASCADE;"
     )
 
 
@@ -292,6 +296,79 @@ def generate_prob_view(view: str, dict_name: str) -> str:
     )
 
 
+def build_aggregate_all_view(from_clause: str,
+                             group_col: str,
+                             agg_func: str,
+                             final_agg_name: str,
+                             sentence_expression: str) -> str:
+    from_clause = re.sub(r"[\s\t]+", " ", from_clause.strip(), flags=re.IGNORECASE | re.DOTALL)
+    formatted_from = re.sub(
+        REGEX_JOIN_CLAUSE_START,
+        lambda m: f"\n\t\t{m.group(0).upper().strip()}",
+        from_clause,
+        flags=re.IGNORECASE | re.DOTALL
+    )
+
+    agg_func = agg_func.lower()
+    bdd_aggregation_func = f"prob_Bdd_{agg_func}"
+    group_by_no_aliases = remove_table_aliases(group_col).strip()
+    group_by = group_col
+
+    arr = f"array_agg({remove_table_aliases(group_col)})"
+    inner_sentence = f"agg_or(_sentence)" if '&' not in sentence_expression else sentence_expression
+    arr_sentence = "array_agg(_sentence)"
+    mask_gen = "generate_series(0,(pow(2,array_length(arr_sentence,1))-1)::bigint)::bit(64)"
+
+    return f"""CREATE OR REPLACE VIEW agg_all_view AS
+SELECT {final_agg_name}, agg_or(_sentence) AS _sentence
+FROM (
+    SELECT {bdd_aggregation_func}(arr,mask) AS {final_agg_name}, prob_Bdd(arr_sentence,mask) AS _sentence, arr, arr_sentence, mask
+    FROM (
+        SELECT arr, arr_sentence, {mask_gen} AS mask
+        FROM (
+            SELECT {arr} arr, {arr_sentence} arr_sentence
+            FROM {formatted_from}
+            GROUP BY TRUE
+        ) AS first
+    ) AS second
+) AS third
+GROUP BY {final_agg_name};"""
+
+
+def generate_aggregate_all_query(select_clause: str, from_clause: str,
+                                 group_by: str, having: str,
+                                 with_prob: bool = False, with_sentence: bool = False,
+                                 sentence_expression: str = "certain",
+                                 needs_prob: bool = False,
+                                 dict_name: str = "mydict") -> list[str]:
+    # Parse aggregation function and target from SELECT
+    match = re.search(r"\b(count|sum|avg|min|max)\s*\(\s*\*\s*\)(?:\s+AS\s+(\w+)\b)?", select_clause, re.IGNORECASE | re.DOTALL)
+    if not match:
+        return ["ERROR: Unsupported or malformed aggregation."]
+    agg_func, alias = match.groups()
+    final_agg_field = alias if alias else agg_func
+
+    view_queries = []
+    view_queries.append(generate_drop_views())
+    view_queries.append(build_aggregate_all_view(
+        from_clause, group_by, agg_func, final_agg_field, sentence_expression
+    ))
+
+    if needs_prob:
+        view_queries.append(generate_prob_view("agg_all_view", dict_name))
+
+    final_output_table = "prob_view" if needs_prob else "agg_all_view"
+    final_fields = [final_agg_field]
+    if with_prob:
+        final_fields.append("probability")
+    if with_sentence:
+        final_fields.append("_sentence")
+
+    query = f"SELECT {', '.join(final_fields)}\nFROM {final_output_table};"
+    view_queries.append(query)
+    return view_queries
+
+
 def build_aggregate_view(from_clause: str, group_cols: list[str], 
                          agg_func, agg_target, final_agg_name: str, 
                          sentence_expression: str,
@@ -299,11 +376,11 @@ def build_aggregate_view(from_clause: str, group_cols: list[str],
     from_clause = re.sub(r"[\s\t]+", " ", from_clause.strip(), flags=re.IGNORECASE | re.DOTALL)
     formatted_from = re.sub(
         REGEX_JOIN_CLAUSE_START,
-        lambda m: f"\n{m.group(0).upper().strip()}",
+        lambda m: f"\n\t\t{m.group(0).upper().strip()}",
         from_clause,
         flags=re.IGNORECASE | re.DOTALL
     )
-    where = f"WHERE {where}" if where else ""
+    where = f"\n\t\tWHERE {where}" if where else ""
 
     agg_func = agg_func.lower()
     bdd_aggregation_func = f"prob_Bdd_{agg_func}"
@@ -311,14 +388,14 @@ def build_aggregate_view(from_clause: str, group_cols: list[str],
     group_by = ", ".join(group_cols)
 
     inner_group_by_clauses = []
-    inner_group_by_clauses.append("" if '&' in sentence_expression else f"\nGROUP BY {group_by}, {agg_target}")
+    inner_group_by_clauses.append("" if '&' in sentence_expression else f"\n\t\tGROUP BY {group_by}, {agg_target}")
     # TODO inner_group_by_clauses.append("GROUP BY TRUE" if '&' in sentence_expression else f"GROUP BY {group_by}")
     inner_group_by_clauses.append(f"GROUP BY {group_by_no_aliases}")
 
     arr = f"array_agg({remove_table_aliases(agg_target)})"
     inner_sentence = f"agg_or(_sentence)" if '&' not in sentence_expression else sentence_expression
     arr_sentence = "array_agg(_sentence)"
-    mask_gen = "generate_series(0,(pow(2,array_length(arr_sentence,1))-1)::bigint)::bit(32)"
+    mask_gen = "generate_series(0,(pow(2,array_length(arr_sentence,1))-1)::bigint)::bit(64)"
 
     return f"""CREATE OR REPLACE VIEW agg_view AS
 SELECT {group_by_no_aliases}, {final_agg_name}, agg_or(_sentence) AS _sentence
@@ -330,8 +407,7 @@ FROM (
             SELECT {group_by_no_aliases}, {arr} arr, {arr_sentence} arr_sentence
             FROM (
                 SELECT {group_by}, {agg_target}, {inner_sentence} AS _sentence
-                FROM {formatted_from}
-                {where}{inner_group_by_clauses[0]}
+                FROM {formatted_from}{where}{inner_group_by_clauses[0]}
             ) AS first
             {inner_group_by_clauses[1]}
         ) AS second
@@ -463,6 +539,21 @@ def generate_full_translation(sql: str, dict_name: str = "mydict") -> List[str]:
         if with_prob or with_sentence:
             sql = re.sub(r"\bSHOW.*", "", sql, flags=re.IGNORECASE | re.DOTALL)
         return [sql]
+
+
+    # Check for aggregate ALL query
+    if is_aggregate_all_query(sql):
+        return generate_aggregate_all_query(
+            select_clause,
+            from_clause,
+            group_by,
+            having,
+            with_prob=with_prob is not None,
+            with_sentence=needs_sentence,
+            sentence_expression=sentence_expression,
+            needs_prob=needs_prob,
+            dict_name=dict_name
+        )
 
     # Check for aggregate query
     if is_aggregate_query(sql):
