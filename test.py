@@ -340,13 +340,43 @@ test_one_cell_1 = """
     SELECT cat_name, COUNT(*)
     FROM witnessed
     GROUP BY cat_name
+    SHOW SENTENCE, PROBABILITY
 """
 
 test_one_cell_2 = """
     SELECT cat_name, COUNT(*)
     FROM witnessed
     GROUP BY cat_name
+    HAVING probability > 0
     SHOW SENTENCE, PROBABILITY
+"""
+
+test_one_cell_3 = """
+    SELECT cat_name, COUNT(*) as count_rows
+    FROM witnessed
+    WHERE cat_name = 'max'
+    GROUP BY cat_name
+    HAVING probability > 0 AND count_rows > 0
+    SHOW SENTENCE, PROBABILITY
+"""
+
+test_one_cell_4 = """
+    SELECT cat_name, COUNT(*) as count_rows
+    FROM witnessed
+    GROUP BY cat_name
+    HAVING count_rows > 0
+    SHOW PROBABILITY
+"""
+
+# NOTE: GROUP BY is still important to be present, for the >1 table queries in particular! E.g., the following query:
+test_one_cell_5 = """
+    SELECT w.cat_name, COUNT(*) as count_rows
+    FROM witnessed w
+    JOIN plays p ON w.cat_name = p.cat_name
+    WHERE p.color IN ('gray', 'black')
+    GROUP BY w.cat_name
+    HAVING count_rows > 0
+    SHOW PROBABILITY
 """
 
 
@@ -362,13 +392,13 @@ where_tests = [test_where_1, test_where_2]
 where_having_tests = [test_where_having_1, test_where_having_2]
 certain_data_tests = [test_certain_data_1, test_certain_data_2, test_certain_data_3]
 large_query_tests = [test_large_query_1, test_large_query_2, test_large_query_3]
-one_cell_result_tests = [test_one_cell_1, test_one_cell_2]
+one_cell_result_tests = [test_one_cell_1, test_one_cell_2, test_one_cell_3, test_one_cell_4, test_one_cell_5]
 
-selected_tests = [test_distinct_4]
+selected_tests = [test_simple_1]
 
 # tests = simple_tests + join_tests + order_limit_tests + mixed_data_tests + \
 #     aggregation_tests + distinct_tests + where_tests + where_having_tests + large_query_tests + one_cell_result_tests
-tests = large_query_tests
+tests = one_cell_result_tests
 
 def run_tests():
     for i, test in enumerate(tests):
