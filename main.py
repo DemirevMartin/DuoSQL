@@ -1,17 +1,10 @@
-"""TODO
-    - If the tables have no aliases, the JOIN reads the ON as an alias (also check joining with WHERE)
-"""
-"""
-    - Joining sentences - only '&'
-    - DISTINCT and aggregation - only 'agg_or()' for traversing all worlds
-"""
 import re, os
 from typing import List, Tuple, Optional, Dict
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 
 ############ CONSTANTS ############
-# Load environment variables from .env file
+# Load environment variables from .env file first
 load_dotenv(".env")
 
 user = os.getenv("USER")
@@ -24,7 +17,7 @@ engine = create_engine(f"postgresql+psycopg2://{user}:{password}@{host}/{databas
 REGEX_BOUNDING_CLAUSES: dict[str, str] = {
     "SELECT": r"\b(?=FROM|;|$)\b",
     "FROM_JOIN": r"\b(?=SHOW|GROUP|HAVING|ORDER|LIMIT|WHERE|;|$)\b",  # JOIN handled inside FROM
-    "FROM_NO_JOIN": r"\b(?=JOIN|WHERE|GROUP|HAVING|ORDER|LIMIT|SHOW|;|$)\b",
+    "FROM_NO_JOIN": r"\b(?:(?:JOIN|LEFT|RIGHT|INNER|CROSS)|WHERE|GROUP|HAVING|ORDER|LIMIT|SHOW|;|$)\b",
     "WHERE": r"\b(?=GROUP|HAVING|ORDER|LIMIT|SHOW|;|$)\b",
     "GROUP": r"\b(?=HAVING|ORDER|LIMIT|SHOW|;|$)\b",
     "HAVING": r"\b(?=ORDER|LIMIT|SHOW|;|$)\b",
@@ -36,7 +29,6 @@ REGEX_CLAUSE_STRUCTURES: dict[str, str] = {
     "SELECT": rf"\bSELECT\s+(.+?){REGEX_BOUNDING_CLAUSES['SELECT']}",
     "FROM_JOIN": rf"\bFROM\s+(.+?){REGEX_BOUNDING_CLAUSES['FROM_JOIN']}",
     "FROM_NO_JOIN": rf"\bFROM\s+(.+?){REGEX_BOUNDING_CLAUSES['FROM_NO_JOIN']}",
-    "JOIN": rf"\bJOIN\s+(\w+)(?=\s+(\w+))?{REGEX_BOUNDING_CLAUSES['FROM_NO_JOIN']}",
     "WHERE": rf"\bWHERE\s+(.+?){REGEX_BOUNDING_CLAUSES['WHERE']}",
     "GROUP": rf"\bGROUP\s+BY\s+(.+?){REGEX_BOUNDING_CLAUSES['GROUP']}",
     "HAVING": rf"\bHAVING\s+(.+?){REGEX_BOUNDING_CLAUSES['HAVING']}",
@@ -46,7 +38,7 @@ REGEX_CLAUSE_STRUCTURES: dict[str, str] = {
 }
 
 REGEX_JOIN_CLAUSE_START: str = r"\b(?:(?:(?:LEFT|RIGHT|FULL)(?:\s+OUTER)?|INNER|CROSS)?\s*JOIN)\b"
-REGEX_JOIN_CLAUSE: str = rf"{REGEX_JOIN_CLAUSE_START}\s+(\w+)(?:\s+(\w+))?"
+REGEX_JOIN_CLAUSE: str = rf"{REGEX_JOIN_CLAUSE_START}\s+(\w+)(?:\s+(\w+))?\b\s*ON\b"
 
 
 ########### SQL CLAUSE EXTRACTION ##########
@@ -112,11 +104,11 @@ def extract_tables_from_from(sql: str) -> List[Tuple[str, str]]:
 
     if not from_match:
         return []
+    
     from_clause = from_match.group(1)
-
     tables = []
     for part in from_clause.split(','):
-        tokens = part.strip().split()
+        tokens = re.split(r'\s+', part.strip())
         if len(tokens) == 1:
             tables.append((tokens[0], tokens[0]))
         elif len(tokens) == 2:

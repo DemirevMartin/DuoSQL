@@ -9,8 +9,8 @@ test_simple_1 = """
     SHOW SENTENCE, PROBABILITY
 """
 
-# Basic join with no extras
-test_simple_2 = """
+# Basic join with no extras 1⚡
+test_simple_2 = """ 
     SELECT p.companion AS suspect, witness, w.color, w.cat_name
     FROM witnessed w, plays p
     WHERE w.color = p.color AND w.cat_name = p.cat_name
@@ -34,12 +34,12 @@ test_simple_4 = """
 
 
 ############## JOIN ##############
-# -- INNER JOIN with aliases and WHERE clause (find people who played with cats that were witnessed, with high certainty)
+# 1⚡
 test_join_1 = """
-    SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed
+    SELECT plays.companion AS person, w.witness, w.cat_name, w.color, w.breed
     FROM witnessed w
-    RIGHT JOIN plays p
-    ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed = p.breed
+    JOIN plays
+    ON w.cat_name = plays.cat_name AND w.color = plays.color AND w.breed = plays.breed
 """
 
 # -- LEFT JOIN with aliases and no probability clause (see all witnessed cats and who possibly played with them)
@@ -51,11 +51,12 @@ test_join_2 = """
     SHOW PROBABILITY
 """
 
+# 2⚡
 # -- RIGHT JOIN with SHOW PROBABILITY (see who played with a cat and whether they were witnessed)
 test_join_3 = """
     SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed
     FROM witnessed w
-    LEFT JOIN plays p
+    RIGHT JOIN plays p
     ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed = p.breed
     SHOW PROBABILITY
 """
@@ -94,6 +95,7 @@ test_join_7 = """
     SHOW SENTENCE
 """
 
+# 2 ⚡
 test_join_8 = """
     SELECT w.witness, p.companion AS player, c.caretaker, o.owner, w.cat_name
     FROM witnessed w
@@ -125,6 +127,7 @@ test_order_limit_2 = """
 """
 
 ############### UN/CERTAIN Data ##############
+# 8⚡
 test_mixed_data_1 = """
     SELECT w.witness, pc.cat_id, w.cat_name, w.color, w.breed
     FROM witnessed w
@@ -139,17 +142,21 @@ test_mixed_data_2 = """
     JOIN profile_certain pc ON p.cat_name = pc.cat_name
     SHOW PROBABILITY
     LIMIT 10;
+    
 """
 
+# 8⚡
 test_mixed_data_3 = """
     SELECT c.caretaker, pc.cat_id, c.cat_name, c.breed, c.age
     FROM cares c
     JOIN profile_certain pc ON c.cat_name = pc.cat_name
+    JOIN owns o ON c.cat_name = o.cat_name
     SHOW SENTENCE;
 """
 
 ############## AGGREGATION ##############
 # TODO Test sum, min, max, avg
+# 3⚡
 test_agg_1 = """
     SELECT cat_name, avg(age)
     FROM witnessed
@@ -180,6 +187,7 @@ test_agg_5 = """
     SHOW SENTENCE, PROBABILITY
 """
 
+# 3⚡
 test_agg_6 = """
     SELECT w.cat_name, count(companion)
     FROM plays p
@@ -196,6 +204,7 @@ test_distinct_1 = """
     FROM witnessed;
 """
 
+# 4⚡
 test_distinct_2 = """
     SELECT DISTINCT color
     FROM plays
@@ -210,7 +219,8 @@ test_distinct_3 = """
     HAVING probability > 0.5
     ORDER BY p.age;
 """
-# TODO CHECK
+
+# 4⚡
 test_distinct_4 = """ 
     SELECT DISTINCT p.age
     FROM plays p
@@ -229,6 +239,7 @@ test_distinct_5 = """
 """
 
 ############### WHERE and HAVING ##############
+# 5⚡
 test_where_1 = """
     SELECT w.witness, p.companion AS person, w.cat_name, w.color
     FROM witnessed w
@@ -251,11 +262,13 @@ test_where_2 = """
     SHOW PROBABILITY
 """
 
+# 5⚡
 test_where_having_1 = """
     SELECT cat_name, COUNT(color)
     FROM witnessed
+    WHERE color IN ('white', 'black')
     GROUP BY cat_name
-    HAVING COUNT(color) > 1
+    HAVING COUNT(color) > 0 AND probability > 0
     ORDER BY probability ASC
     LIMIT 10
     SHOW SENTENCE, PROBABILITY
@@ -296,10 +309,11 @@ test_certain_data_3 = """
 """
 
 ############### LARGE QUERY TESTS ##############
+# 6⚡
 test_large_query_1 = """
-    SELECT w.witness, p.companion AS player, c.caretaker, o.owner, w.cat_name
+    SELECT w.witness, plays.companion AS player, c.caretaker, o.owner, w.cat_name
     FROM witnessed w
-    JOIN plays p ON w.cat_name = p.cat_name
+    JOIN plays ON w.cat_name = plays.cat_name
     JOIN cares c ON w.cat_name = c.cat_name
     JOIN owns o ON w.cat_name = o.cat_name
     WHERE w.cat_name = 'max' AND w.color = 'gray'
@@ -320,6 +334,7 @@ test_large_query_2 = """
     SHOW SENTENCE, PROBABILITY
 """
 
+# 6⚡
 test_large_query_3 = """
     SELECT w.witness, p.companion AS player, c.caretaker, o.owner, count(w.color) AS color_count
     FROM witnessed w
@@ -351,6 +366,7 @@ test_one_cell_2 = """
     SHOW SENTENCE, PROBABILITY
 """
 
+# 7⚡
 test_one_cell_3 = """
     SELECT cat_name, COUNT(*) as count_rows
     FROM witnessed
@@ -368,7 +384,7 @@ test_one_cell_4 = """
     SHOW PROBABILITY
 """
 
-# NOTE: GROUP BY is still important to be present, for the >1 table queries in particular! E.g., the following query:
+# NOTE: GROUP BY is still important to be present for the >1 table queries in particular! E.g., the following query:
 test_one_cell_5 = """
     SELECT w.cat_name, COUNT(*) as count_rows
     FROM witnessed w
@@ -394,11 +410,11 @@ certain_data_tests = [test_certain_data_1, test_certain_data_2, test_certain_dat
 large_query_tests = [test_large_query_1, test_large_query_2, test_large_query_3]
 one_cell_result_tests = [test_one_cell_1, test_one_cell_2, test_one_cell_3, test_one_cell_4, test_one_cell_5]
 
-selected_tests = [test_simple_1]
+selected_tests = [test_large_query_1]
 
 # tests = simple_tests + join_tests + order_limit_tests + mixed_data_tests + \
 #     aggregation_tests + distinct_tests + where_tests + where_having_tests + large_query_tests + one_cell_result_tests
-tests = one_cell_result_tests
+tests = selected_tests
 
 def run_tests():
     for i, test in enumerate(tests):
