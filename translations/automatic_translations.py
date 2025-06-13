@@ -1,5 +1,5 @@
 ############ 1⚡ ############
-test_simple_2 = """
+auto_auto_test_simple_2 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
 
@@ -12,7 +12,7 @@ SELECT suspect, witness, color, cat_name
 FROM join_view;
 """
 
-test_join_1 = """
+auto_test_join_1 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
 
@@ -27,7 +27,7 @@ FROM join_view;
 
 
 ############ 2⚡ ############
-test_join_3 = """
+auto_test_join_3 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
 
@@ -45,7 +45,7 @@ SELECT person, witness, cat_name, color, breed, probability
 FROM prob_view;
 """
 
-test_join_8 = """
+auto_test_join_8 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
 
@@ -66,7 +66,7 @@ FROM prob_view;
 """
 
 ############ 3⚡ ############
-test_agg_1 = """
+auto_test_agg_1 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS agg_view CASCADE;
 
@@ -101,7 +101,7 @@ ORDER BY cat_name
 LIMIT 10;
 """
 
-test_agg_6 = """
+auto_test_agg_6 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS agg_view CASCADE;
 
@@ -136,7 +136,7 @@ ORDER BY cat_name;
 """
 
 ############ 4⚡ ############
-test_distinct_2 = """
+auto_test_distinct_2 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
 
@@ -156,7 +156,7 @@ WHERE probability > 0.5
 ORDER BY color;
 """
 
-test_distinct_4 = """
+auto_test_distinct_4 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
 
@@ -179,7 +179,7 @@ ORDER BY age;
 
 
 ############ 5⚡ ############
-test_where_1 = """
+auto_test_where_1 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
 
@@ -201,7 +201,7 @@ ORDER BY witness DESC, probability ASC
 LIMIT 10;
 """
 
-test_where_having_1 = """
+auto_test_where_having_1 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS agg_view CASCADE;
 
@@ -239,7 +239,7 @@ LIMIT 10;
 
 
 ############ 6⚡ ############
-test_large_query_1 = """
+auto_test_large_query_1 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
 
@@ -262,7 +262,7 @@ ORDER BY witness DESC, probability ASC
 LIMIT 10;
 """
 
-test_large_query_3 = """
+auto_test_large_query_3 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS agg_view CASCADE;
 
@@ -302,7 +302,7 @@ LIMIT 10;
 
 
 ############ 7⚡ ############
-test_one_cell_3 = """
+auto_test_one_cell_3 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS agg_all_view CASCADE;
 
@@ -336,7 +336,7 @@ FROM prob_view
 WHERE probability > 0 AND count_rows > 0;
 """
 
-test_one_cell_5 = """
+auto_test_one_cell_5 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS agg_all_view CASCADE;
 
@@ -372,7 +372,7 @@ WHERE count_rows > 0;
 
 
 ############ 8⚡ ############
-test_mixed_data_1 = """
+auto_test_mixed_data_1 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
 
@@ -392,7 +392,7 @@ WHERE probability > 0.5
 ORDER BY cat_id;
 """
 
-test_mixed_data_3 = """
+auto_test_mixed_data_3 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
 

@@ -1,21 +1,21 @@
-############## SIMPLE TESTS ##############
-# Basic join with no extras 1⚡
-test_simple_2 = """ 
+############## SIMPLE manual_testS ##############
+# 1⚡
+manual_test_simple_2 = """
 SELECT p.companion AS suspect, w.witness, w.color, w.cat_name
 FROM witnessed w
 JOIN plays p ON w.color = p.color AND w.cat_name = p.cat_name;
 """
 
 # 1⚡
-test_join_1 = """
-SELECT p.companion AS suspect, w.witness, w.cat_name, w.color, w.breed
+manual_test_join_1 = """
+SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed
 FROM witnessed w
-JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color
+JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed = p.breed
 """
 
 ############## JOIN ##############
 # 2⚡
-test_join_3 = """
+manual_test_join_3 = """
 SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed,
        ROUND(prob(d.dict, w._sentence & p._sentence)::numeric, 4) AS probability
 FROM witnessed w
@@ -24,7 +24,7 @@ JOIN _dict d ON d.name = 'cats_short';
 """
 
 # 2 ⚡
-test_join_8 = """
+manual_test_join_8 = """
 SELECT w.witness, p.companion AS player, c.caretaker, o.owner, w.cat_name,
        ROUND(prob(d.dict, w._sentence & p._sentence & c._sentence & o._sentence)::numeric, 4) AS probability,
        (w._sentence & p._sentence & c._sentence & o._sentence) AS _sentence
@@ -38,7 +38,7 @@ JOIN _dict d ON d.name = 'cats_short';
 
 ############## AGGREGATION ##############
 # 3⚡
-test_agg_1 = """
+manual_test_agg_1 = """
 SELECT cat_name, avg, round(prob(d.dict, v._sentence)::numeric, 4) AS probability, _sentence
 FROM (
     SELECT cat_name, avg, agg_or(_sentence) AS _sentence
@@ -66,7 +66,7 @@ LIMIT 10;
 """
 
 # 3⚡
-test_agg_6 = """
+manual_test_agg_6 = """
 SELECT cat_name, count, round(prob(d.dict, v._sentence)::numeric, 4) AS probability, _sentence
 FROM (
     SELECT cat_name, count, agg_or(_sentence) AS _sentence
@@ -94,7 +94,7 @@ ORDER BY cat_name;
 
 ############## DISTINCT ##############
 # 4⚡
-test_distinct_2 = """
+manual_test_distinct_2 = """
 SELECT color
 FROM (
     SELECT color, round(prob(d.dict, _sentence)::numeric, 4) AS probability
@@ -110,7 +110,7 @@ ORDER BY color;
 """
 
 # 4⚡
-test_distinct_4 = """ 
+manual_test_distinct_4 = """ 
 SELECT age, probability
 FROM (
     SELECT age, round(prob(d.dict, _sentence)::numeric, 4) AS probability
@@ -128,7 +128,7 @@ ORDER BY age;
 
 ############### WHERE and HAVING ##############
 # 5⚡
-test_where_1 = f"""
+manual_test_where_1 = f"""
 SELECT witness, person, cat_name, color, probability, _sentence
 FROM (
     SELECT witness, person, cat_name, color, round(prob(d.dict, _sentence)::numeric, 4) AS probability, _sentence
@@ -146,7 +146,7 @@ LIMIT 10;
 """
 
 # 5⚡
-test_where_having_1 = """
+manual_test_where_having_1 = """
 SELECT cat_name, COUNT, probability, _sentence
 FROM (
     SELECT cat_name, COUNT, round(prob(d.dict, _sentence)::numeric, 4) AS probability, _sentence
@@ -178,9 +178,9 @@ LIMIT 10;
 """
 
 
-############### LARGE QUERY TESTS ##############
+############### LARGE QUERY manual_testS ##############
 # 6⚡
-test_large_query_1 = """
+manual_test_large_query_1 = """
 SELECT witness, player, caretaker, owner, cat_name, probability, _sentence
 FROM (
     SELECT witness, player, caretaker, owner, cat_name, round(prob(d.dict, _sentence)::numeric, 4) AS probability, _sentence
@@ -199,7 +199,7 @@ LIMIT 10;
 """
 
 # 6⚡
-test_large_query_3 = """
+manual_test_large_query_3 = """
 SELECT witness, companion, caretaker, owner, cat_name, color_count, probability, _sentence
 FROM (
     SELECT witness, companion, caretaker, owner, cat_name, color_count, round(prob(d.dict, _sentence)::numeric, 4) AS probability, _sentence
@@ -232,9 +232,9 @@ ORDER BY witness DESC, probability ASC
 LIMIT 10;
 """
 
-############### ONE-CELL RESULT QUERY TESTS ##############
+############### ONE-CELL RESULT QUERY manual_testS ##############
 # 7⚡
-test_one_cell_3 = """
+manual_test_one_cell_3 = """
 SELECT count_rows, probability, _sentence
 FROM (
     SELECT count_rows, round(prob(d.dict, _sentence)::numeric, 4) AS probability, _sentence
@@ -264,7 +264,7 @@ WHERE probability > 0 AND count_rows > 0;
 """
 
 # 7⚡
-test_one_cell_5 = """
+manual_test_one_cell_5 = """
 SELECT count_rows, probability, _sentence
 FROM (
     SELECT count_rows, round(prob(d.dict, _sentence)::numeric, 4) AS probability, _sentence
@@ -296,7 +296,7 @@ WHERE count_rows > 0;
 
 ############### UN/CERTAIN Data ##############
 # 8⚡
-test_mixed_data_1 = """
+manual_test_mixed_data_1 = """
 SELECT witness, cat_id, cat_name, color, breed
 FROM (
     SELECT witness, cat_id, cat_name, color, breed, round(prob(d.dict, _sentence)::numeric, 4) AS probability
@@ -312,7 +312,7 @@ ORDER BY cat_id;
 """
 
 # 8⚡
-test_mixed_data_3 = """
+manual_test_mixed_data_3 = """
 SELECT caretaker, cat_id, cat_name, breed, age, _sentence
 FROM (
     SELECT c.caretaker, pc.cat_id, c.cat_name, c.breed, c.age, c._sentence & o._sentence AS _sentence

@@ -36,10 +36,10 @@ test_simple_4 = """
 ############## JOIN ##############
 # 1⚡
 test_join_1 = """
-    SELECT plays.companion AS person, w.witness, w.cat_name, w.color, w.breed
+    SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed
     FROM witnessed w
-    JOIN plays
-    ON w.cat_name = plays.cat_name AND w.color = plays.color AND w.breed = plays.breed
+    JOIN plays p
+    ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed = p.breed
 """
 
 # -- LEFT JOIN with aliases and no probability clause (see all witnessed cats and who possibly played with them)
@@ -155,7 +155,7 @@ test_mixed_data_3 = """
 """
 
 ############## AGGREGATION ##############
-# TODO Test sum, min, max, avg
+# TODO Test min, max
 # 3⚡
 test_agg_1 = """
     SELECT cat_name, avg(age)

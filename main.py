@@ -397,7 +397,6 @@ def build_aggregate_view(from_clause: str, group_cols: list[str],
 
     inner_group_by_clauses = []
     inner_group_by_clauses.append("" if '&' in sentence_expression else f"\n\t\tGROUP BY {group_by}, {agg_target}")
-    # TODO inner_group_by_clauses.append("GROUP BY TRUE" if '&' in sentence_expression else f"GROUP BY {group_by}")
     inner_group_by_clauses.append(f"GROUP BY {group_by_no_aliases}")
 
     arr = f"array_agg({remove_table_aliases(agg_target)})"
