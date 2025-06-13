@@ -405,3 +405,59 @@ JOIN owns o ON c.cat_name = o.cat_name;
 SELECT caretaker, cat_id, cat_name, breed, age, _sentence
 FROM join_view;
 """
+
+
+##### All Auto Tests #####
+auto_tests = {
+    "SIMPLE": [
+        auto_auto_test_simple_2,
+        auto_test_join_1,
+    ],
+    "JOIN + PROBABILITY": [
+        auto_test_join_3,
+        auto_test_join_8,
+    ],
+    "GROUP BY + AGGREGATE": [
+        auto_test_agg_1,
+        auto_test_agg_6,
+    ],
+    "DISTINCT": [
+        auto_test_distinct_2,
+        auto_test_distinct_4,
+    ],
+    "FILTERS": [
+        auto_test_where_1,
+        auto_test_where_having_1,
+    ],
+    "LARGE COMPLEX": [
+        auto_test_large_query_1,
+        auto_test_large_query_3,
+    ],
+    "COUNT(*) ROWS": [
+        auto_test_one_cell_3,
+        auto_test_one_cell_5,
+    ],
+    "MIXED DATA": [
+        auto_test_mixed_data_1,
+        auto_test_mixed_data_3,
+    ]
+}
+
+auto_test_names = [
+    "auto_auto_test_simple_2",
+    "auto_test_join_1",
+    "auto_test_join_3",
+    "auto_test_join_8",
+    "auto_test_agg_1",
+    "auto_test_agg_6",
+    "auto_test_distinct_2",
+    "auto_test_distinct_4",
+    "auto_test_where_1",
+    "auto_test_where_having_1",
+    "auto_test_large_query_1",
+    "auto_test_large_query_3",
+    "auto_test_one_cell_3",
+    "auto_test_one_cell_5",
+    "auto_test_mixed_data_1",
+    "auto_test_mixed_data_3",
+]

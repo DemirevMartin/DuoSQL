@@ -1,4 +1,4 @@
-############## SIMPLE manual_testS ##############
+############## SIMPLE ##############
 # 1⚡
 manual_test_simple_2 = """
 SELECT p.companion AS suspect, w.witness, w.color, w.cat_name
@@ -322,3 +322,59 @@ FROM (
 ) AS join_view
 JOIN _dict d ON d.name = 'cats_short';
 """
+
+
+##### All Manual Tests #####
+manual_tests = {
+    "SIMPLE": [
+        manual_test_simple_2,
+        manual_test_join_1,
+    ],
+    "JOIN + PROBABILITY": [
+        manual_test_join_3,
+        manual_test_join_8,
+    ],
+    "GROUP BY + AGGREGATE": [
+        manual_test_agg_1,
+        manual_test_agg_6,
+    ],
+    "DISTINCT": [
+        manual_test_distinct_2,
+        manual_test_distinct_4,
+    ],
+    "FILTERS": [
+        manual_test_where_1,
+        manual_test_where_having_1,
+    ],
+    "LARGE COMPLEX": [
+        manual_test_large_query_1,
+        manual_test_large_query_3,
+    ],
+    "COUNT(*) ROWS": [
+        manual_test_one_cell_3,
+        manual_test_one_cell_5,
+    ],
+    "MIXED DATA": [
+        manual_test_mixed_data_1,
+        manual_test_mixed_data_3,
+    ]
+}
+
+manual_test_names = [
+    "manual_test_simple_2",
+    "manual_test_join_1",
+    "manual_test_join_3",
+    "manual_test_join_8",
+    "manual_test_agg_1",
+    "manual_test_agg_6",
+    "manual_test_distinct_2",
+    "manual_test_distinct_4",
+    "manual_test_where_1",
+    "manual_test_where_having_1",
+    "manual_test_large_query_1",
+    "manual_test_large_query_3",
+    "manual_test_one_cell_3",
+    "manual_test_one_cell_5",
+    "manual_test_mixed_data_1",
+    "manual_test_mixed_data_3",
+]
