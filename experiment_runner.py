@@ -4,7 +4,7 @@ from high_level_tests import high_level_tests, high_level_test_names
 import re
 import openpyxl
 from openpyxl.utils import get_column_letter
-from openpyxl.styles import Alignment,Border, Side
+from openpyxl.styles import Alignment, Border, Side
 
 
 # Code Lines (CL) Counter
@@ -30,7 +30,7 @@ def count_complexity(query: str):
     nested_selects = re.findall(r'from\s*\(\s*select', query)
     joins = re.findall(r'\bjoin\b', query)
     complexity = len(nested_selects) + 0.5 * len(joins)
-    return complexity
+    return complexity + 1 # 1 is the base complexity
 
 # Probabilistic Constructs Counter (only the relevant ones to this project are included)
 def count_probabilistic_constructs(query: str):
