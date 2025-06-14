@@ -288,8 +288,8 @@ def generate_prob_view(view: str, dict_name: str) -> str:
     return (
         "CREATE OR REPLACE VIEW prob_view AS\n"
         "SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability\n"
-        f"FROM {view} v, _dict d\n"
-        f"WHERE d.name = '{dict_name}';"
+        f"FROM {view} v\n"
+        f"JOIN _dict d ON d.name = '{dict_name}';"
     )
 
 

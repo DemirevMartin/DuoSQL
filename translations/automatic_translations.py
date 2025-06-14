@@ -1,17 +1,4 @@
 ############ 1⚡ ############
-auto_auto_test_simple_2 = """
-DROP VIEW IF EXISTS prob_view CASCADE;
-DROP VIEW IF EXISTS join_view CASCADE;
-
-CREATE OR REPLACE VIEW join_view AS
-SELECT p.companion AS suspect, witness, w.color, w.cat_name
-FROM witnessed w, plays p
-WHERE w.color = p.color AND w.cat_name = p.cat_name;
-
-SELECT suspect, witness, color, cat_name
-FROM join_view;
-"""
-
 auto_test_join_1 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
@@ -25,6 +12,18 @@ SELECT person, witness, cat_name, color, breed
 FROM join_view;
 """
 
+auto_test_join_2 = """
+DROP VIEW IF EXISTS prob_view CASCADE;
+DROP VIEW IF EXISTS join_view CASCADE;
+
+CREATE OR REPLACE VIEW join_view AS
+SELECT p.companion, w.witness, w.cat_name, w.color, w.breed, w.age
+FROM witnessed w
+JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color;
+
+SELECT companion, witness, cat_name, color, breed, age
+FROM join_view;
+"""
 
 ############ 2⚡ ############
 auto_test_join_3 = """
@@ -38,8 +37,8 @@ RIGHT JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed 
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM join_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM join_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT person, witness, cat_name, color, breed, probability
 FROM prob_view;
@@ -58,8 +57,8 @@ JOIN owns o ON w.cat_name = o.cat_name;
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM join_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM join_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT witness, player, caretaker, owner, cat_name, probability, _sentence
 FROM prob_view;
@@ -91,8 +90,8 @@ GROUP BY cat_name, avg;
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM agg_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM agg_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT cat_name, avg, probability, _sentence
 FROM prob_view
@@ -127,8 +126,8 @@ GROUP BY cat_name, count;
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM agg_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM agg_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT cat_name, count, probability, _sentence
 FROM prob_view
@@ -147,8 +146,8 @@ GROUP BY color;
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM join_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM join_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT color
 FROM prob_view
@@ -168,8 +167,8 @@ GROUP BY p.age;
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM join_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM join_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT age
 FROM prob_view
@@ -191,8 +190,8 @@ WHERE w.cat_name = 'max' AND w.color = 'gray';
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM join_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM join_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT witness, person, cat_name, color, probability, _sentence
 FROM prob_view
@@ -227,8 +226,8 @@ GROUP BY cat_name, COUNT;
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM agg_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM agg_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT cat_name, COUNT, probability, _sentence
 FROM prob_view
@@ -253,8 +252,8 @@ WHERE w.cat_name = 'max' AND w.color = 'gray';
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM join_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM join_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT witness, player, caretaker, owner, cat_name, probability, _sentence
 FROM prob_view
@@ -290,8 +289,8 @@ GROUP BY witness, companion, caretaker, owner, cat_name, color_count;
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM agg_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM agg_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT witness, companion, caretaker, owner, cat_name, color_count, probability, _sentence
 FROM prob_view
@@ -328,8 +327,8 @@ GROUP BY count_rows;
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM agg_all_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM agg_all_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT count_rows, probability, _sentence
 FROM prob_view
@@ -362,8 +361,8 @@ GROUP BY count_rows;
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM agg_all_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM agg_all_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT count_rows, probability, _sentence
 FROM prob_view
@@ -383,8 +382,8 @@ JOIN profile_certain pc ON w.cat_name = pc.cat_name;
 
 CREATE OR REPLACE VIEW prob_view AS
 SELECT v.*, round(prob(d.dict, v._sentence)::numeric, 4) AS probability
-FROM join_view v, _dict d
-WHERE d.name = 'cats_short';
+FROM join_view v
+JOIN _dict d ON d.name = 'cats_short';
 
 SELECT witness, cat_id, cat_name, color, breed
 FROM prob_view
@@ -410,8 +409,8 @@ FROM join_view;
 ##### All Auto Tests #####
 auto_tests = {
     "SIMPLE": [
-        auto_auto_test_simple_2,
         auto_test_join_1,
+        auto_test_join_2,
     ],
     "JOIN + PROBABILITY": [
         auto_test_join_3,
@@ -444,8 +443,8 @@ auto_tests = {
 }
 
 auto_test_names = [
-    "auto_auto_test_simple_2",
     "auto_test_join_1",
+    "auto_test_join_2",
     "auto_test_join_3",
     "auto_test_join_8",
     "auto_test_agg_1",

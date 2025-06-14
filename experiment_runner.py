@@ -31,14 +31,20 @@ def count_complexity(query: str):
     - Each JOIN counts as 0.5
     - Each FROM with multiple tables counts as 0.5 for each additional table after the first
     - Each view used counts as 0.5
+    -------------------------------------------------------------------------------------------------------------------
+    NOTE NOTE NOTE: This is a very basic complexity measure and does not take into account all possible SQL constructs.
+    Example: if there are multiple tables in the FROM clause, it does not count them as additional complexity.
+    In this project, all translated queries use JOINs!
+    The joins through FROM and WHERE are intentionally excluded from the experiments!
+    So this function does work correctly when it comes to the queries in this project.
+    -------------------------------------------------------------------------------------------------------------------
     """
     query = query.lower()
+    views_used = re.findall(r'\bview\s+\w+', query)
     nested_selects = re.findall(r'from\s*\(\s*select', query)
     joins = re.findall(r'\bjoin\b', query)
-    from_joins = query.split(',')
-    views_used = re.findall(r'\bview\s+\w+', query)
 
-    complexity = 1 + len(nested_selects) + 0.5 * len(joins) + 0.5 * (len(from_joins) - 1) + 0.5 * len(views_used)
+    complexity = 1 + len(nested_selects) + 0.5 * len(joins) + 0.5 * len(views_used)
     return complexity
 
 # Probabilistic Constructs Counter (only the relevant ones to this project are included)
@@ -136,5 +142,5 @@ def run_experiment(odd_tests_name: str, even_tests_name: str):
 
 
 if __name__ == "__main__":
-    # run_experiment("manual", "high-level")
-    run_experiment("auto", "manual")
+    run_experiment("manual", "high-level")
+    run_experiment("manual", "auto")

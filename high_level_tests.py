@@ -1,6 +1,9 @@
 from main import generate_full_translation
 
-############## SIMPLE TESTS ##############
+# NOTE NOTE DISCLAIMER: Some, mostly the general simple tests, are not included in the experiments. 
+# Check the NOTE DISCLAIMER in complexity_count in experiment_runner.py for more details.
+
+############## GENERAL SIMPLE TESTS ##############
 high_level_test_simple_1 = """
     SELECT p.companion AS suspect, witness, w.color, w.cat_name
     FROM witnessed w, plays p
@@ -9,7 +12,7 @@ high_level_test_simple_1 = """
     SHOW SENTENCE, PROBABILITY
 """
 
-# Basic join with no extras 1⚡
+# Basic join with no extras
 high_level_test_simple_2 = """ 
     SELECT p.companion AS suspect, witness, w.color, w.cat_name
     FROM witnessed w, plays p
@@ -42,17 +45,15 @@ high_level_test_join_1 = """
     ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed = p.breed
 """
 
-# -- LEFT JOIN with aliases and no probability clause (see all witnessed cats and who possibly played with them)
+# 1⚡
 high_level_test_join_2 = """
-    SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed
+    SELECT p.companion, w.witness, w.cat_name, w.color, w.breed, w.age
     FROM witnessed w
-    LEFT JOIN plays p
-    ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed = p.breed
-    SHOW PROBABILITY
+    JOIN plays p
+    ON w.cat_name = p.cat_name AND w.color = p.color
 """
 
 # 2⚡
-# -- RIGHT JOIN with SHOW PROBABILITY (see who played with a cat and whether they were witnessed)
 high_level_test_join_3 = """
     SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed
     FROM witnessed w
@@ -61,7 +62,6 @@ high_level_test_join_3 = """
     SHOW PROBABILITY
 """
 
-# -- FULL JOIN with SHOW SENTENCE (join all cats that were witnessed or played with, and show derivation)
 high_level_test_join_4 = """
     SELECT w.witness, p.companion AS person, w.cat_name
     FROM witnessed w 
@@ -70,7 +70,6 @@ high_level_test_join_4 = """
     SHOW SENTENCE
 """
 
-# -- FULL OUTER JOIN with SHOW PROBABILITY (like above, but show probabilities)
 high_level_test_join_5 = """
     SELECT w.witness, p.companion AS person, p.cat_name
     FROM witnessed w FULL OUTER JOIN plays p
@@ -78,7 +77,6 @@ high_level_test_join_5 = """
     SHOW PROBABILITY
 """
 
-# -- INNER JOIN with SHOW SENTENCE (people who cared for cats that were also witnessed)
 high_level_test_join_6 = """
     SELECT w.witness, c.caretaker AS person, w.cat_name, w.color
     FROM witnessed w INNER JOIN cares c
@@ -86,7 +84,6 @@ high_level_test_join_6 = """
     SHOW SENTENCE
 """
 
-# -- Complex joins with SHOW SENTENCE (cats that were witnessed, played with, and cared for)
 high_level_test_join_7 = """
     SELECT w.witness, p.companion AS player, c.caretaker, w.cat_name
     FROM witnessed w
@@ -385,6 +382,7 @@ high_level_test_one_cell_4 = """
 """
 
 # NOTE: GROUP BY is still important to be present for the >1 table queries in particular! E.g., the following query:
+# 7⚡
 high_level_test_one_cell_5 = """
     SELECT w.cat_name, COUNT(*) as count_rows
     FROM witnessed w
@@ -410,11 +408,11 @@ certain_data_high_level_tests = [high_level_test_certain_data_1, high_level_test
 large_query_high_level_tests = [high_level_test_large_query_1, high_level_test_large_query_2, high_level_test_large_query_3]
 one_cell_result_high_level_tests = [high_level_test_one_cell_1, high_level_test_one_cell_2, high_level_test_one_cell_3, high_level_test_one_cell_4, high_level_test_one_cell_5]
 
-selected_high_level_tests = [high_level_test_large_query_1]
+selected_high_level_tests = [high_level_test_join_2]
 
-# high_level_tests = simple_high_level_tests + join_high_level_tests + order_limit_high_level_tests + mixed_data_high_level_tests + \
-#     aggregation_high_level_tests + distinct_high_level_tests + where_high_level_tests + where_having_high_level_tests + large_query_high_level_tests + one_cell_result_high_level_tests
-high_level_tests = selected_high_level_tests
+high_level_tests = simple_high_level_tests + join_high_level_tests + order_limit_high_level_tests + mixed_data_high_level_tests + \
+    aggregation_high_level_tests + distinct_high_level_tests + where_high_level_tests + where_having_high_level_tests + large_query_high_level_tests + one_cell_result_high_level_tests
+# high_level_tests = selected_high_level_tests
 
 def run_high_level_tests():
     for i, high_level_test in enumerate(high_level_tests):
@@ -463,8 +461,8 @@ high_level_tests = {
 }
 
 high_level_test_names = [
-    "high_level_test_simple_2",
     "high_level_test_join_1",
+    "high_level_test_join_2",
     "high_level_test_join_3",
     "high_level_test_join_8",
     "high_level_test_agg_1",

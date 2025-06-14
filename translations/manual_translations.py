@@ -1,16 +1,16 @@
 ############## SIMPLE ##############
 # 1⚡
-manual_test_simple_2 = """
-SELECT p.companion AS suspect, w.witness, w.color, w.cat_name
-FROM witnessed w
-JOIN plays p ON w.color = p.color AND w.cat_name = p.cat_name;
-"""
-
-# 1⚡
 manual_test_join_1 = """
 SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed
 FROM witnessed w
 JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed = p.breed
+"""
+
+# 1⚡
+manual_test_join_2 = """
+SELECT p.companion, w.witness, w.cat_name, w.color, w.breed, w.age
+FROM witnessed w
+JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color;
 """
 
 ############## JOIN ##############
@@ -327,8 +327,8 @@ JOIN _dict d ON d.name = 'cats_short';
 ##### All Manual Tests #####
 manual_tests = {
     "SIMPLE": [
-        manual_test_simple_2,
         manual_test_join_1,
+        manual_test_join_2,
     ],
     "JOIN + PROBABILITY": [
         manual_test_join_3,
@@ -361,8 +361,8 @@ manual_tests = {
 }
 
 manual_test_names = [
-    "manual_test_simple_2",
     "manual_test_join_1",
+    "manual_test_join_2",
     "manual_test_join_3",
     "manual_test_join_8",
     "manual_test_agg_1",
