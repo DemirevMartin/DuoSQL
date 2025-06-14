@@ -24,13 +24,22 @@ def count_characters(query: str):
 
 # Complexity (LoC) Counter
 def count_complexity(query: str):
-    # For every r'FROM\s*(\s*SELECT', count 1
-    # For every JOIN, count 0.5
+    """
+    This function calculated the complexity as follows:
+    - The base complexity is 1
+    - Each nested SELECT in FROM counts as 1
+    - Each JOIN counts as 0.5
+    - Each FROM with multiple tables counts as 0.5 for each additional table after the first
+    - Each view used counts as 0.5
+    """
     query = query.lower()
     nested_selects = re.findall(r'from\s*\(\s*select', query)
     joins = re.findall(r'\bjoin\b', query)
-    complexity = len(nested_selects) + 0.5 * len(joins)
-    return complexity + 1 # 1 is the base complexity
+    from_joins = query.split(',')
+    views_used = re.findall(r'\bview\s+\w+', query)
+
+    complexity = 1 + len(nested_selects) + 0.5 * len(joins) + 0.5 * (len(from_joins) - 1) + 0.5 * len(views_used)
+    return complexity
 
 # Probabilistic Constructs Counter (only the relevant ones to this project are included)
 def count_probabilistic_constructs(query: str):
@@ -127,5 +136,5 @@ def run_experiment(odd_tests_name: str, even_tests_name: str):
 
 
 if __name__ == "__main__":
-    run_experiment("manual", "high-level")
-    # run_experiment("auto", "manual")
+    # run_experiment("manual", "high-level")
+    run_experiment("auto", "manual")
