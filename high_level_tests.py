@@ -41,39 +41,34 @@ high_level_test_simple_4 = """
 high_level_test_join_1 = """
     SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed
     FROM witnessed w
-    JOIN plays p
-    ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed = p.breed
+    JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed = p.breed
 """
 
 # 1⚡
 high_level_test_join_2 = """
     SELECT p.companion, w.witness, w.cat_name, w.color, w.breed, w.age
     FROM witnessed w
-    JOIN plays p
-    ON w.cat_name = p.cat_name AND w.color = p.color
+    JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color
 """
 
 # 2⚡
 high_level_test_join_3 = """
     SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed
     FROM witnessed w
-    RIGHT JOIN plays p
-    ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed = p.breed
+    RIGHT JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed = p.breed
     SHOW PROBABILITY
 """
 
 high_level_test_join_4 = """
     SELECT w.witness, p.companion AS person, w.cat_name
     FROM witnessed w 
-    FULL JOIN plays p
-    ON w.cat_name = p.cat_name AND w.color = p.color
+    FULL JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color
     SHOW SENTENCE
 """
 
 high_level_test_join_5 = """
     SELECT w.witness, p.companion AS person, p.cat_name
-    FROM witnessed w FULL OUTER JOIN plays p
-    ON w.cat_name = p.cat_name AND w.color = p.color
+    FROM witnessed w FULL OUTER JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color
     SHOW PROBABILITY
 """
 
@@ -427,8 +422,8 @@ if __name__ == "__main__":
 
 high_level_tests = {
     "SIMPLE": [
-        high_level_test_simple_2,
         high_level_test_join_1,
+        high_level_test_join_2,
     ],
     "JOIN + PROBABILITY": [
         high_level_test_join_3,

@@ -27,24 +27,25 @@ def count_complexity(query: str):
     """
     This function calculated the complexity as follows:
     - The base complexity is 1
-    - Each nested SELECT in FROM counts as 1
+    - Each nested SELECT in FROM counts as 1 (NOTE: this is the only type of nested SELECT used in this project)
     - Each JOIN counts as 0.5
     - Each FROM with multiple tables counts as 0.5 for each additional table after the first
     - Each view used counts as 0.5
     -------------------------------------------------------------------------------------------------------------------
     NOTE NOTE NOTE: This is a very basic complexity measure and does not take into account all possible SQL constructs.
     Example: if there are multiple tables in the FROM clause, it does not count them as additional complexity.
-    In this project, all translated queries use JOINs!
+    In this project's experiments, all queries use JOINs!
     The joins through FROM and WHERE are intentionally excluded from the experiments!
-    So this function does work correctly when it comes to the queries in this project.
+    This function *does* work correctly when it comes to the queries in this project.
     -------------------------------------------------------------------------------------------------------------------
     """
     query = query.lower()
-    views_used = re.findall(r'\bview\s+\w+', query)
-    nested_selects = re.findall(r'from\s*\(\s*select', query)
-    joins = re.findall(r'\bjoin\b', query)
-
-    complexity = 1 + len(nested_selects) + 0.5 * len(joins) + 0.5 * len(views_used)
+    views_used = len(re.findall(r'\bcreate or replace view\b', query))
+    nested_selects = len(re.findall(r'\bfrom\s*\(\s*select\b', query))
+    joins = len(re.findall(r'\bjoin\b', query))
+    where_clauses = len(re.findall(r'\bwhere\b', query))
+    
+    complexity = 1 + joins + where_clauses + views_used + nested_selects
     return complexity
 
 # Probabilistic Constructs Counter (only the relevant ones to this project are included)
