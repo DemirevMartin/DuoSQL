@@ -178,7 +178,7 @@ LIMIT 10;
 """
 
 
-############### LARGE QUERY manual_testS ##############
+############### LARGE QUERY manual_tests ##############
 # 6⚡
 manual_test_large_query_1 = """
 SELECT witness, player, caretaker, owner, cat_name, probability, _sentence
@@ -232,9 +232,9 @@ ORDER BY witness DESC, probability ASC
 LIMIT 10;
 """
 
-############### ONE-CELL RESULT QUERY manual_testS ##############
+############### AGG ALL QUERY manual_tests ##############
 # 7⚡
-manual_test_one_cell_3 = """
+manual_test_agg_all_3 = """
 SELECT count_rows, probability, _sentence
 FROM (
     SELECT count_rows, round(prob(d.dict, _sentence)::numeric, 4) AS probability, _sentence
@@ -264,7 +264,7 @@ WHERE probability > 0 AND count_rows > 0;
 """
 
 # 7⚡
-manual_test_one_cell_5 = """
+manual_test_agg_all_5 = """
 SELECT count_rows, probability, _sentence
 FROM (
     SELECT count_rows, round(prob(d.dict, _sentence)::numeric, 4) AS probability, _sentence
@@ -346,13 +346,13 @@ manual_tests = {
         manual_test_where_1,
         manual_test_where_having_1,
     ],
-    "LARGE COMPLEX": [
+    "LARGE": [
         manual_test_large_query_1,
         manual_test_large_query_3,
     ],
-    "COUNT(*) ROWS": [
-        manual_test_one_cell_3,
-        manual_test_one_cell_5,
+    "COUNT(*)": [
+        manual_test_agg_all_3,
+        manual_test_agg_all_5,
     ],
     "MIXED DATA": [
         manual_test_mixed_data_1,
@@ -373,8 +373,8 @@ manual_test_names = [
     "manual_test_where_having_1",
     "manual_test_large_query_1",
     "manual_test_large_query_3",
-    "manual_test_one_cell_3",
-    "manual_test_one_cell_5",
+    "manual_test_agg_all_3",
+    "manual_test_agg_all_5",
     "manual_test_mixed_data_1",
     "manual_test_mixed_data_3",
 ]

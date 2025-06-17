@@ -35,6 +35,11 @@ high_level_test_simple_4 = """
     SHOW SENTENCE
 """
 
+high_level_test_simple_5 = """
+    SELECT *
+    FROM witnessed
+"""
+
 
 ############## JOIN ##############
 # 1⚡
@@ -147,7 +152,6 @@ high_level_test_mixed_data_3 = """
 """
 
 ############## AGGREGATION ##############
-# TODO Test min, max
 # 3⚡
 high_level_test_agg_1 = """
     SELECT cat_name, avg(age)
@@ -170,6 +174,27 @@ high_level_test_agg_2 = """
     SHOW PROBABILITY
 """
 
+high_level_test_agg_3 = """
+    SELECT w.cat_name, SUM(w.age) as total
+    FROM owns o
+    JOIN witnessed w ON o.cat_name = w.cat_name
+    JOIN plays p ON w.cat_name = p.cat_name
+    WHERE p.color IN ('gray', 'black')
+    GROUP BY w.cat_name
+    HAVING probability > 0
+    ORDER BY probability DESC
+    LIMIT 10
+    SHOW PROBABILITY
+"""
+
+high_level_test_agg_4 = """
+    SELECT w.cat_name, MIN(w.age) as minimum
+    FROM witnessed w
+    JOIN plays p ON w.cat_name = p.cat_name
+    WHERE p.color IN ('gray', 'black')
+    GROUP BY w.cat_name
+"""
+
 high_level_test_agg_5 = """
     SELECT w.cat_name, count(companion)
     FROM plays p, witnessed w
@@ -189,6 +214,19 @@ high_level_test_agg_6 = """
     ORDER BY w.cat_name
     SHOW SENTENCE, PROBABILITY
 """
+
+
+high_level_test_agg_7 = """
+    SELECT w.cat_name, MAX(w.age) as minimum
+    FROM owns o
+    JOIN witnessed w ON o.cat_name = w.cat_name
+    JOIN plays p ON w.cat_name = p.cat_name
+    WHERE p.color IN ('gray', 'black')
+    GROUP BY w.cat_name
+    HAVING probability > 0
+    SHOW PROBABILITY
+"""
+
 
 ############## DISTINCT ##############
 high_level_test_distinct_1 = """
@@ -342,15 +380,15 @@ high_level_test_large_query_3 = """
 """
 
 
-############### ONE-CELL RESULT QUERY TESTS ##############
-high_level_test_one_cell_1 = """
+############### AGG ALL TESTS ##############
+high_level_test_agg_all_1 = """
     SELECT cat_name, COUNT(*)
     FROM witnessed
     GROUP BY cat_name
     SHOW SENTENCE, PROBABILITY
 """
 
-high_level_test_one_cell_2 = """
+high_level_test_agg_all_2 = """
     SELECT cat_name, COUNT(*)
     FROM witnessed
     GROUP BY cat_name
@@ -359,7 +397,7 @@ high_level_test_one_cell_2 = """
 """
 
 # 7⚡
-high_level_test_one_cell_3 = """
+high_level_test_agg_all_3 = """
     SELECT cat_name, COUNT(*) as count_rows
     FROM witnessed
     WHERE cat_name = 'max'
@@ -368,7 +406,7 @@ high_level_test_one_cell_3 = """
     SHOW SENTENCE, PROBABILITY
 """
 
-high_level_test_one_cell_4 = """
+high_level_test_agg_all_4 = """
     SELECT cat_name, COUNT(*) as count_rows
     FROM witnessed
     GROUP BY cat_name
@@ -378,7 +416,7 @@ high_level_test_one_cell_4 = """
 
 # NOTE: GROUP BY is still important to be present for the >1 table queries in particular! E.g., the following query:
 # 7⚡
-high_level_test_one_cell_5 = """
+high_level_test_agg_all_5 = """
     SELECT w.cat_name, COUNT(*) as count_rows
     FROM witnessed w
     JOIN plays p ON w.cat_name = p.cat_name
@@ -395,18 +433,18 @@ simple_high_level_tests = [high_level_test_simple_1, high_level_test_simple_2, h
 join_high_level_tests = [high_level_test_join_1, high_level_test_join_2, high_level_test_join_3, high_level_test_join_4, high_level_test_join_5, high_level_test_join_6, high_level_test_join_7, high_level_test_join_8]
 order_limit_high_level_tests = [high_level_test_order_limit_1, high_level_test_order_limit_2]
 mixed_data_high_level_tests = [high_level_test_mixed_data_1, high_level_test_mixed_data_2, high_level_test_mixed_data_3]
-aggregation_high_level_tests = [high_level_test_agg_1, high_level_test_agg_2, high_level_test_agg_5, high_level_test_agg_6]
+aggregation_high_level_tests = [high_level_test_agg_1, high_level_test_agg_2, high_level_test_agg_3, high_level_test_agg_4, high_level_test_agg_5, high_level_test_agg_6, high_level_test_agg_7]
 distinct_high_level_tests = [high_level_test_distinct_1, high_level_test_distinct_2, high_level_test_distinct_3, high_level_test_distinct_4, high_level_test_distinct_5]
 where_high_level_tests = [high_level_test_where_1, high_level_test_where_2]
 where_having_high_level_tests = [high_level_test_where_having_1, high_level_test_where_having_2]
 certain_data_high_level_tests = [high_level_test_certain_data_1, high_level_test_certain_data_2, high_level_test_certain_data_3]
 large_query_high_level_tests = [high_level_test_large_query_1, high_level_test_large_query_2, high_level_test_large_query_3]
-one_cell_result_high_level_tests = [high_level_test_one_cell_1, high_level_test_one_cell_2, high_level_test_one_cell_3, high_level_test_one_cell_4, high_level_test_one_cell_5]
+agg_all_result_high_level_tests = [high_level_test_agg_all_1, high_level_test_agg_all_2, high_level_test_agg_all_3, high_level_test_agg_all_4, high_level_test_agg_all_5]
 
-selected_high_level_tests = [high_level_test_join_2]
+# selected_high_level_tests = [high_level_test_agg_7]
 
 high_level_tests = simple_high_level_tests + join_high_level_tests + order_limit_high_level_tests + mixed_data_high_level_tests + \
-    aggregation_high_level_tests + distinct_high_level_tests + where_high_level_tests + where_having_high_level_tests + large_query_high_level_tests + one_cell_result_high_level_tests
+    aggregation_high_level_tests + distinct_high_level_tests + where_high_level_tests + where_having_high_level_tests + large_query_high_level_tests + agg_all_result_high_level_tests
 # high_level_tests = selected_high_level_tests
 
 def run_high_level_tests():
@@ -441,13 +479,13 @@ high_level_tests = {
         high_level_test_where_1,
         high_level_test_where_having_1,
     ],
-    "LARGE COMPLEX": [
+    "LARGE": [
         high_level_test_large_query_1,
         high_level_test_large_query_3,
     ],
-    "COUNT(*) ROWS": [
-        high_level_test_one_cell_3,
-        high_level_test_one_cell_5,
+    "COUNT(*)": [
+        high_level_test_agg_all_3,
+        high_level_test_agg_all_5,
     ],
     "MIXED DATA": [
         high_level_test_mixed_data_1,
@@ -468,8 +506,8 @@ high_level_test_names = [
     "high_level_test_where_having_1",
     "high_level_test_large_query_1",
     "high_level_test_large_query_3",
-    "high_level_test_one_cell_3",
-    "high_level_test_one_cell_5",
+    "high_level_test_agg_all_3",
+    "high_level_test_agg_all_5",
     "high_level_test_mixed_data_1",
     "high_level_test_mixed_data_3"
 ]

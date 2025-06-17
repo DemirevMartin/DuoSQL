@@ -335,48 +335,6 @@ FROM (
 GROUP BY {final_agg_name};"""
 
 
-def generate_aggregate_all_query(select_clause: str, from_clause: str, where: str,
-                                 group_by: str, having: str, order_by: str, limit: str,
-                                 with_prob: bool = False, with_sentence: bool = False,
-                                 sentence_expression: str = "certain",
-                                 needs_prob: bool = False,
-                                 dict_name: str = "cats_short") -> list[str]:
-    # Parse aggregation function and target from SELECT
-    match = re.search(r"\b(count|sum|avg|min|max)\s*\(\s*\*\s*\)(?:\s+AS\s+(\w+)\b)?", select_clause, re.IGNORECASE | re.DOTALL)
-    if not match:
-        return ["ERROR: Unsupported or malformed aggregation."]
-    agg_func, alias = match.groups()
-    final_agg_field = alias if alias else agg_func
-
-    view_queries = []
-    view_queries.append(generate_drop_views(prob=True, agg_all=True))
-    view_queries.append(build_aggregate_all_view(
-        from_clause, group_by, where, agg_func, final_agg_field, sentence_expression
-    ))
-
-    if needs_prob:
-        view_queries.append(generate_prob_view("agg_all_view", dict_name))
-
-    final_output_table = "prob_view" if needs_prob else "agg_all_view"
-    final_fields = [final_agg_field]
-    if with_prob:
-        final_fields.append("probability")
-    if with_sentence:
-        final_fields.append("_sentence")
-
-    query = f"SELECT {', '.join(final_fields)}\nFROM {final_output_table}"
-
-    if having:
-        query += f"\nWHERE {having}"
-    if order_by:
-        query += f"\nORDER BY {order_by}"
-    if limit:
-        query += f"\nLIMIT {limit}"
-
-    view_queries.append(query + ";")
-    return view_queries
-
-
 def build_aggregate_view(from_clause: str, group_cols: list[str], 
                          agg_func, agg_target, final_agg_name: str, 
                          sentence_expression: str,
@@ -456,6 +414,48 @@ def generate_final_query(select_clause: str, with_prob: bool, with_sentence: boo
         query += f"\nLIMIT {limit}"
 
     return query + ";"
+
+
+def generate_aggregate_all_query(select_clause: str, from_clause: str, where: str,
+                                 group_by: str, having: str, order_by: str, limit: str,
+                                 with_prob: bool = False, with_sentence: bool = False,
+                                 sentence_expression: str = "certain",
+                                 needs_prob: bool = False,
+                                 dict_name: str = "cats_short") -> list[str]:
+    # Parse aggregation function and target from SELECT
+    match = re.search(r"\b(count|sum|avg|min|max)\s*\(\s*\*\s*\)(?:\s+AS\s+(\w+)\b)?", select_clause, re.IGNORECASE | re.DOTALL)
+    if not match:
+        return ["ERROR: Unsupported or malformed aggregation."]
+    agg_func, alias = match.groups()
+    final_agg_field = alias if alias else agg_func
+
+    view_queries = []
+    view_queries.append(generate_drop_views(prob=True, agg_all=True))
+    view_queries.append(build_aggregate_all_view(
+        from_clause, group_by, where, agg_func, final_agg_field, sentence_expression
+    ))
+
+    if needs_prob:
+        view_queries.append(generate_prob_view("agg_all_view", dict_name))
+
+    final_output_table = "prob_view" if needs_prob else "agg_all_view"
+    final_fields = [final_agg_field]
+    if with_prob:
+        final_fields.append("probability")
+    if with_sentence:
+        final_fields.append("_sentence")
+
+    query = f"SELECT {', '.join(final_fields)}\nFROM {final_output_table}"
+
+    if having:
+        query += f"\nWHERE {having}"
+    if order_by:
+        query += f"\nORDER BY {order_by}"
+    if limit:
+        query += f"\nLIMIT {limit}"
+
+    view_queries.append(query + ";")
+    return view_queries
 
 
 def generate_aggregate_query(select_clause: str, from_clause: str,

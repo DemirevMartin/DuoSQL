@@ -301,7 +301,7 @@ LIMIT 10;
 
 
 ############ 7⚡ ############
-auto_test_one_cell_3 = """
+auto_test_agg_all_3 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS agg_all_view CASCADE;
 
@@ -335,7 +335,7 @@ FROM prob_view
 WHERE probability > 0 AND count_rows > 0;
 """
 
-auto_test_one_cell_5 = """
+auto_test_agg_all_5 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS agg_all_view CASCADE;
 
@@ -428,13 +428,13 @@ auto_tests = {
         auto_test_where_1,
         auto_test_where_having_1,
     ],
-    "LARGE COMPLEX": [
+    "LARGE": [
         auto_test_large_query_1,
         auto_test_large_query_3,
     ],
-    "COUNT(*) ROWS": [
-        auto_test_one_cell_3,
-        auto_test_one_cell_5,
+    "COUNT(*)": [
+        auto_test_agg_all_3,
+        auto_test_agg_all_5,
     ],
     "MIXED DATA": [
         auto_test_mixed_data_1,
@@ -455,8 +455,8 @@ auto_test_names = [
     "auto_test_where_having_1",
     "auto_test_large_query_1",
     "auto_test_large_query_3",
-    "auto_test_one_cell_3",
-    "auto_test_one_cell_5",
+    "auto_test_agg_all_3",
+    "auto_test_agg_all_5",
     "auto_test_mixed_data_1",
     "auto_test_mixed_data_3",
 ]
