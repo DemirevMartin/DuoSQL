@@ -224,7 +224,7 @@ def requests_probability(sql: str) -> bool:
 
 
 ########## VIEW CREATION ##########
-
+# The (relevant) views must be dropped before creating new ones since they are correlated and even "CREATE OR REPLACE" is not enough
 def generate_drop_views(prob: bool = False, join: bool = False, agg: bool = False, agg_all: bool = False) -> str:
     result = []
     if prob:
@@ -239,6 +239,7 @@ def generate_drop_views(prob: bool = False, join: bool = False, agg: bool = Fals
     return "\n".join(result)
 
 
+# For non-aggregate queries
 def generate_join_view(select_clause: str, from_clause: str, where_clause: str,
                        sentence_expression: str, needs_sentence: bool,
                        use_distinct: bool) -> str:
@@ -293,6 +294,7 @@ def generate_prob_view(view: str, dict_name: str) -> str:
     )
 
 
+# For aggregate_all queries - COUNT(*)
 def build_aggregate_all_view(from_clause: str,
                              group_col: str, where: str,
                              agg_func: str,
@@ -335,6 +337,7 @@ FROM (
 GROUP BY {final_agg_name};"""
 
 
+# For aggregate queries (excluding COUNT(*))
 def build_aggregate_view(from_clause: str, group_cols: list[str], 
                          agg_func, agg_target, final_agg_name: str, 
                          sentence_expression: str,

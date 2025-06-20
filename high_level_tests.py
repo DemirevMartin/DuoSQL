@@ -188,7 +188,7 @@ high_level_test_agg_3 = """
 """
 
 high_level_test_agg_4 = """
-    SELECT w.cat_name, MIN(w.age) as minimum
+    SELECT w.cat_name, MIN(w.age) as minimum_age
     FROM witnessed w
     JOIN plays p ON w.cat_name = p.cat_name
     WHERE p.color IN ('gray', 'black')
@@ -217,7 +217,7 @@ high_level_test_agg_6 = """
 
 
 high_level_test_agg_7 = """
-    SELECT w.cat_name, MAX(w.age) as minimum
+    SELECT w.cat_name, MAX(w.age) as maximum_age
     FROM owns o
     JOIN witnessed w ON o.cat_name = w.cat_name
     JOIN plays p ON w.cat_name = p.cat_name
