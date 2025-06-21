@@ -1,20 +1,18 @@
-############## SIMPLE ##############
-# 1⚡
+############ 1 ⚡ SIMPLE ############
 manual_test_join_1 = """
 SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed
 FROM witnessed w
 JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed = p.breed
 """
 
-# 1⚡
 manual_test_join_2 = """
 SELECT p.companion, w.witness, w.cat_name, w.color, w.breed, w.age
 FROM witnessed w
 JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color;
 """
 
-############## JOIN ##############
-# 2⚡
+
+############ 2 ⚡ JOIN + PROBABILITY ############
 manual_test_join_3 = """
 SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed,
        ROUND(prob(d.dict, w._sentence & p._sentence)::numeric, 4) AS probability
@@ -23,7 +21,6 @@ RIGHT JOIN plays p ON w.cat_name = p.cat_name AND w.color = p.color AND w.breed 
 JOIN _dict d ON d.name = 'cats_short';
 """
 
-# 2 ⚡
 manual_test_join_8 = """
 SELECT w.witness, p.companion AS player, c.caretaker, o.owner, w.cat_name,
        ROUND(prob(d.dict, w._sentence & p._sentence & c._sentence & o._sentence)::numeric, 4) AS probability,
@@ -36,8 +33,7 @@ JOIN _dict d ON d.name = 'cats_short';
 """
 
 
-############## AGGREGATION ##############
-# 3⚡
+############ 5 ⚡ AGGREGATION ############
 manual_test_agg_1 = """
 SELECT cat_name, avg, round(prob(d.dict, v._sentence)::numeric, 4) AS probability, _sentence
 FROM (
@@ -65,7 +61,6 @@ ORDER BY cat_name
 LIMIT 10;
 """
 
-# 3⚡
 manual_test_agg_6 = """
 SELECT cat_name, count, round(prob(d.dict, v._sentence)::numeric, 4) AS probability, _sentence
 FROM (
@@ -92,8 +87,8 @@ JOIN _dict d ON d.name = 'cats_short'
 ORDER BY cat_name;
 """
 
-############## DISTINCT ##############
-# 4⚡
+
+############ 4 ⚡ DISTINCT ############
 manual_test_distinct_2 = """
 SELECT color
 FROM (
@@ -109,7 +104,6 @@ WHERE probability > 0.5
 ORDER BY color;
 """
 
-# 4⚡
 manual_test_distinct_4 = """ 
 SELECT age, probability
 FROM (
@@ -126,8 +120,8 @@ WHERE probability > 0.5
 ORDER BY age;
 """
 
-############### WHERE and HAVING ##############
-# 5⚡
+
+############ 7 ⚡ FILTERS ############
 manual_test_where_1 = f"""
 SELECT witness, person, cat_name, color, probability, _sentence
 FROM (
@@ -145,7 +139,6 @@ ORDER BY witness DESC, probability ASC
 LIMIT 10;
 """
 
-# 5⚡
 manual_test_where_having_1 = """
 SELECT cat_name, COUNT, probability, _sentence
 FROM (
@@ -178,8 +171,7 @@ LIMIT 10;
 """
 
 
-############### LARGE QUERY manual_tests ##############
-# 6⚡
+############ 8 ⚡ LARGE ############
 manual_test_large_query_1 = """
 SELECT witness, player, caretaker, owner, cat_name, probability, _sentence
 FROM (
@@ -198,7 +190,6 @@ ORDER BY witness DESC, probability ASC
 LIMIT 10;
 """
 
-# 6⚡
 manual_test_large_query_3 = """
 SELECT witness, companion, caretaker, owner, cat_name, color_count, probability, _sentence
 FROM (
@@ -232,8 +223,8 @@ ORDER BY witness DESC, probability ASC
 LIMIT 10;
 """
 
-############### AGG ALL QUERY manual_tests ##############
-# 7⚡
+
+############ 6 ⚡ COUNT(*) ############
 manual_test_agg_all_3 = """
 SELECT count_rows, probability, _sentence
 FROM (
@@ -263,7 +254,6 @@ FROM (
 WHERE probability > 0 AND count_rows > 0;
 """
 
-# 7⚡
 manual_test_agg_all_5 = """
 SELECT count_rows, probability, _sentence
 FROM (
@@ -294,8 +284,7 @@ WHERE count_rows > 0;
 """
 
 
-############### MIXED DATA ##############
-# 8⚡
+############ 3 ⚡ MIXED DATA ############
 manual_test_mixed_data_1 = """
 SELECT witness, cat_id, cat_name, color, breed
 FROM (
@@ -311,7 +300,6 @@ WHERE probability > 0.5
 ORDER BY cat_id;
 """
 
-# 8⚡
 manual_test_mixed_data_3 = """
 SELECT caretaker, cat_id, cat_name, breed, age, _sentence
 FROM (

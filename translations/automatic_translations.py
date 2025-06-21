@@ -1,4 +1,4 @@
-############ 1⚡ ############
+############ 1 ⚡ SIMPLE ############
 auto_test_join_1 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
@@ -25,7 +25,7 @@ SELECT companion, witness, cat_name, color, breed, age
 FROM join_view;
 """
 
-############ 2⚡ ############
+############ 2 ⚡ JOIN + PROBABILITY ############
 auto_test_join_3 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
@@ -64,7 +64,8 @@ SELECT witness, player, caretaker, owner, cat_name, probability, _sentence
 FROM prob_view;
 """
 
-############ 3⚡ ############
+
+############ 5 ⚡ AGGREGATION ############
 auto_test_agg_1 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS agg_view CASCADE;
@@ -134,7 +135,8 @@ FROM prob_view
 ORDER BY cat_name;
 """
 
-############ 4⚡ ############
+
+############ 4 ⚡ DISTINCT ############
 auto_test_distinct_2 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
@@ -177,7 +179,7 @@ ORDER BY age;
 """
 
 
-############ 5⚡ ############
+############ 7 ⚡ FILTERS ############
 auto_test_where_1 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
@@ -237,7 +239,7 @@ LIMIT 10;
 """
 
 
-############ 6⚡ ############
+############ 8 ⚡ LARGE ############
 auto_test_large_query_1 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
@@ -300,7 +302,7 @@ LIMIT 10;
 """
 
 
-############ 7⚡ ############
+############ 6 ⚡ COUNT(*) ############
 auto_test_agg_all_3 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS agg_all_view CASCADE;
@@ -370,7 +372,7 @@ WHERE count_rows > 0;
 """
 
 
-############ 8⚡ ############
+############ 3 ⚡ MIXED DATA ############
 auto_test_mixed_data_1 = """
 DROP VIEW IF EXISTS prob_view CASCADE;
 DROP VIEW IF EXISTS join_view CASCADE;
