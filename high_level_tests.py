@@ -379,6 +379,19 @@ high_level_test_large_query_3 = """
     SHOW SENTENCE, PROBABILITY
 """
 
+high_level_test_large_query_4 = """
+    SELECT w.witness, p.companion AS suspect, c.caretaker, count(w.color) AS color_count
+    FROM witnessed w
+    JOIN plays p ON w.cat_name = p.cat_name
+    JOIN cares c ON w.cat_name = c.cat_name
+    WHERE w.cat_name = 'max'
+    GROUP BY w.witness, p.companion, w.cat_name
+    HAVING probability >= 0.25 AND color_count > 1
+    ORDER BY w.witness DESC, probability ASC
+    LIMIT 10
+    SHOW SENTENCE, PROBABILITY
+"""
+
 
 ############### AGG ALL TESTS ##############
 high_level_test_agg_all_1 = """
@@ -441,11 +454,11 @@ certain_data_high_level_tests = [high_level_test_certain_data_1, high_level_test
 large_query_high_level_tests = [high_level_test_large_query_1, high_level_test_large_query_2, high_level_test_large_query_3]
 agg_all_result_high_level_tests = [high_level_test_agg_all_1, high_level_test_agg_all_2, high_level_test_agg_all_3, high_level_test_agg_all_4, high_level_test_agg_all_5]
 
-# selected_high_level_tests = [high_level_test_agg_7]
+selected_high_level_tests = [high_level_test_large_query_4]
 
-high_level_tests = simple_high_level_tests + join_high_level_tests + order_limit_high_level_tests + mixed_data_high_level_tests + \
-    aggregation_high_level_tests + distinct_high_level_tests + where_high_level_tests + where_having_high_level_tests + large_query_high_level_tests + agg_all_result_high_level_tests
-# high_level_tests = selected_high_level_tests
+# high_level_tests = simple_high_level_tests + join_high_level_tests + order_limit_high_level_tests + mixed_data_high_level_tests + \
+#     aggregation_high_level_tests + distinct_high_level_tests + where_high_level_tests + where_having_high_level_tests + large_query_high_level_tests + agg_all_result_high_level_tests
+high_level_tests = selected_high_level_tests
 
 def run_high_level_tests():
     for i, high_level_test in enumerate(high_level_tests):
@@ -467,7 +480,7 @@ high_level_tests = {
         high_level_test_join_3,
         high_level_test_join_8,
     ],
-    "GROUP BY + AGGREGATE": [
+    "AGGREGATION": [
         high_level_test_agg_1,
         high_level_test_agg_6,
     ],

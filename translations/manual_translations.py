@@ -294,7 +294,7 @@ WHERE count_rows > 0;
 """
 
 
-############### UN/CERTAIN Data ##############
+############### MIXED DATA ##############
 # 8⚡
 manual_test_mixed_data_1 = """
 SELECT witness, cat_id, cat_name, color, breed
@@ -334,7 +334,7 @@ manual_tests = {
         manual_test_join_3,
         manual_test_join_8,
     ],
-    "GROUP BY + AGGREGATE": [
+    "AGGREGATION": [
         manual_test_agg_1,
         manual_test_agg_6,
     ],

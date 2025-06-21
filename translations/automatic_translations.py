@@ -416,7 +416,7 @@ auto_tests = {
         auto_test_join_3,
         auto_test_join_8,
     ],
-    "GROUP BY + AGGREGATE": [
+    "AGGREGATION": [
         auto_test_agg_1,
         auto_test_agg_6,
     ],
