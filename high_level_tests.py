@@ -41,7 +41,7 @@ high_level_test_simple_5 = """
 """
 
 
-############## JOIN ##############
+############## SIMPLE / JOIN + PROBABILITY ##############
 # 1⚡
 high_level_test_join_1 = """
     SELECT p.companion AS person, w.witness, w.cat_name, w.color, w.breed
@@ -123,8 +123,8 @@ high_level_test_order_limit_2 = """
     SHOW PROBABILITY
 """
 
-############### UN/CERTAIN Data ##############
-# 8⚡
+############### MIXED DATA ##############
+# 3⚡
 high_level_test_mixed_data_1 = """
     SELECT w.witness, pc.cat_id, w.cat_name, w.color, w.breed
     FROM witnessed w
@@ -139,10 +139,9 @@ high_level_test_mixed_data_2 = """
     JOIN profile_certain pc ON p.cat_name = pc.cat_name
     SHOW PROBABILITY
     LIMIT 10;
-    
 """
 
-# 8⚡
+# 3⚡
 high_level_test_mixed_data_3 = """
     SELECT c.caretaker, pc.cat_id, c.cat_name, c.breed, c.age
     FROM cares c
@@ -152,7 +151,7 @@ high_level_test_mixed_data_3 = """
 """
 
 ############## AGGREGATION ##############
-# 3⚡
+# 5⚡
 high_level_test_agg_1 = """
     SELECT cat_name, avg(age)
     FROM witnessed
@@ -204,7 +203,7 @@ high_level_test_agg_5 = """
     SHOW SENTENCE, PROBABILITY
 """
 
-# 3⚡
+# 5⚡
 high_level_test_agg_6 = """
     SELECT w.cat_name, count(companion)
     FROM plays p
@@ -269,7 +268,7 @@ high_level_test_distinct_5 = """
 """
 
 ############### WHERE and HAVING ##############
-# 5⚡
+# 7⚡
 high_level_test_where_1 = """
     SELECT w.witness, p.companion AS person, w.cat_name, w.color
     FROM witnessed w
@@ -292,7 +291,7 @@ high_level_test_where_2 = """
     SHOW PROBABILITY
 """
 
-# 5⚡
+# 7⚡
 high_level_test_where_having_1 = """
     SELECT cat_name, COUNT(color)
     FROM witnessed
@@ -339,7 +338,7 @@ high_level_test_certain_data_3 = """
 """
 
 ############### LARGE QUERY TESTS ##############
-# 6⚡
+# 8⚡
 high_level_test_large_query_1 = """
     SELECT w.witness, plays.companion AS player, c.caretaker, o.owner, w.cat_name
     FROM witnessed w
@@ -364,7 +363,7 @@ high_level_test_large_query_2 = """
     SHOW SENTENCE, PROBABILITY
 """
 
-# 6⚡
+# 8⚡
 high_level_test_large_query_3 = """
     SELECT w.witness, p.companion AS player, c.caretaker, o.owner, count(w.color) AS color_count
     FROM witnessed w
@@ -409,7 +408,7 @@ high_level_test_agg_all_2 = """
     SHOW SENTENCE, PROBABILITY
 """
 
-# 7⚡
+# 6⚡
 high_level_test_agg_all_3 = """
     SELECT cat_name, COUNT(*) as count_rows
     FROM witnessed
@@ -427,8 +426,9 @@ high_level_test_agg_all_4 = """
     SHOW PROBABILITY
 """
 
-# NOTE: GROUP BY is still important to be present for the >1 table queries in particular! E.g., the following query:
-# 7⚡
+# NOTE: GROUP BY is still important to be present for the >1 table queries in particular because of ambiguity! E.g., the following query:
+# NOTE: This one contains one probability result that is invalid, but the query is still valid.
+# 6⚡
 high_level_test_agg_all_5 = """
     SELECT w.cat_name, COUNT(*) as count_rows
     FROM witnessed w
@@ -451,13 +451,17 @@ distinct_high_level_tests = [high_level_test_distinct_1, high_level_test_distinc
 where_high_level_tests = [high_level_test_where_1, high_level_test_where_2]
 where_having_high_level_tests = [high_level_test_where_having_1, high_level_test_where_having_2]
 certain_data_high_level_tests = [high_level_test_certain_data_1, high_level_test_certain_data_2, high_level_test_certain_data_3]
-large_query_high_level_tests = [high_level_test_large_query_1, high_level_test_large_query_2, high_level_test_large_query_3]
+large_query_high_level_tests = [high_level_test_large_query_1, high_level_test_large_query_2, high_level_test_large_query_3, high_level_test_large_query_4]
 agg_all_result_high_level_tests = [high_level_test_agg_all_1, high_level_test_agg_all_2, high_level_test_agg_all_3, high_level_test_agg_all_4, high_level_test_agg_all_5]
 
-selected_high_level_tests = [high_level_test_large_query_4]
-
+# NOTE: mixed_data_high_level_tests are not included in the experiments, as some are meant to trigger Exceptions
+# All generated queries can directly be pasted in PostgreSQL to test them.
 # high_level_tests = simple_high_level_tests + join_high_level_tests + order_limit_high_level_tests + mixed_data_high_level_tests + \
 #     aggregation_high_level_tests + distinct_high_level_tests + where_high_level_tests + where_having_high_level_tests + large_query_high_level_tests + agg_all_result_high_level_tests
+
+# Select a single test or a subset of tests
+selected_high_level_tests = [high_level_test_large_query_4]
+# Comment this line if you want to run the large test above
 high_level_tests = selected_high_level_tests
 
 def run_high_level_tests():
