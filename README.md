@@ -1,4 +1,4 @@
-# DuoSQL Probabilistic SQL 
+# DuoSQL: User-Friendly Probabilistic SQL
 
 ## University of Twente - TCS Bachelor's Research Project
 
