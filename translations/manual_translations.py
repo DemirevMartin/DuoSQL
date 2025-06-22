@@ -35,7 +35,7 @@ JOIN _dict d ON d.name = 'cats_short';
 
 ############ 5 ⚡ AGGREGATION ############
 manual_test_agg_1 = """
-SELECT cat_name, avg, round(prob(d.dict, v._sentence)::numeric, 4) AS probability, _sentence
+SELECT cat_name, avg, round(prob(d.dict, _sentence)::numeric, 4) AS probability, _sentence
 FROM (
     SELECT cat_name, avg, agg_or(_sentence) AS _sentence
     FROM (
@@ -62,7 +62,7 @@ LIMIT 10;
 """
 
 manual_test_agg_6 = """
-SELECT cat_name, count, round(prob(d.dict, v._sentence)::numeric, 4) AS probability, _sentence
+SELECT cat_name, count, round(prob(d.dict, _sentence)::numeric, 4) AS probability, _sentence
 FROM (
     SELECT cat_name, count, agg_or(_sentence) AS _sentence
     FROM (
