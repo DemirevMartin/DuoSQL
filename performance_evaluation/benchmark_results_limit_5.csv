@@ -1,0 +1,9 @@
+query_type,test_name,tables,limit,duration_sec
+manual,manual_test_agg_all_3,1,5,3.1062
+manual,manual_test_agg_6,2,5,0.0472
+manual,manual_test_where_having_1,3,5,0.0442
+manual,manual_test_large_query_3,4,5,0.0431
+auto,auto_test_agg_all_3,1,5,4.1126
+auto,auto_test_agg_6,1,5,0.0491
+auto,auto_test_where_having_1,1,5,0.0456
+auto,auto_test_large_query_3,1,5,0.0458
