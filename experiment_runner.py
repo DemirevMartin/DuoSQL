@@ -18,7 +18,7 @@ def count_code_lines(query: str):
 # Character Counter
 def count_characters(query: str):
     query = query.strip()
-    # Do not count larger spaces and semicolons
+    # Count more than one subsequent spaces and semicolons as 1 character
     query = re.sub(r';|\s+', ' ', query)
     return len(query)
 
@@ -26,11 +26,13 @@ def count_characters(query: str):
 def count_complexity(query: str):
     """
     This function calculated the complexity as follows:
-    - The base complexity is 1
-    - Each nested SELECT in FROM counts as 1 (NOTE: this is the only type of nested SELECT used in this project)
-    - Each JOIN counts as 0.5
-    - Each FROM with multiple tables counts as 0.5 for each additional table after the first
-    - Each view used counts as 0.5
+    – Base complexity: 1;
+    – Joins: +1 for each JOIN clause. It is unable to count joins 
+        through the FROM clause as it is much more complex to
+        automate. All test queries use joins only through JOIN clauses;
+    – Where: +1 for each (whole) clause;
+    – View: +1 for each CREATE OR REPLACE VIEW;
+    – Nested from-selects: +1 for each "FROM ( SELECT" (with flexible spaces).
     -------------------------------------------------------------------------------------------------------------------
     NOTE NOTE NOTE: This is a very basic complexity measure and does not take into account all possible SQL constructs.
     Example: if there are multiple tables in the FROM clause, it does not count them as additional complexity.
